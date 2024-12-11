@@ -1,7 +1,7 @@
 class Scene4 {
     constructor() {
         this.assetsLoaded = false;
-        this.hero = new Hero(width/2, height/2);
+        this.hero = new Hero(width / 2, height / 2);
         this.hope = new Hope();
         this.dialogueBox = new DialogueBox();
         this.currentDialogue = 0;
@@ -14,7 +14,7 @@ class Scene4 {
             { speaker: 'hero', text: "Wow This place. It's beautiful. I didn't notice before." },
             { speaker: 'hope', text: "Of course you didn't. Fear blinds. Doubt muffles." },
             { speaker: 'hope', text: "Answer these six questions, and we'll see the real obstacles holding you back." },
-           
+
             { speaker: 'hero', text: "Fine. Let's go." }
         ];
         this.playerName = "Square";
@@ -102,8 +102,8 @@ class Scene4 {
 
         this.hope.update();
         let time = millis() * 0.001;
-        this.hope.x = width/2 + sin(time) * 100;
-        this.hope.y = height/2 + cos(time) * 50;
+        this.hope.x = width / 2 + sin(time) * 100;
+        this.hope.y = height / 2 + cos(time) * 50;
         this.hope.draw();
 
         if (this.currentDialogue < this.dialogues.length) {
@@ -141,7 +141,7 @@ class Scene4 {
         // Draw cannon if active
         if (this.cannonActive) {
             this.drawCannon();
-            
+
             // Check if cannon has reached the edge and stop music
             if (this.cannonPosition.x > width) {
                 if (this.narrationMusic && this.narrationMusic.isPlaying()) {
@@ -168,7 +168,7 @@ class Scene4 {
             this.narrationMusic.stop();
             this.narrationMusic = null;
         }
-        
+
         if (this.inputBox) {
             this.inputBox.remove();
             this.inputBox = null;
@@ -182,11 +182,11 @@ class Scene4 {
         }
 
         let q = this.questions[this.currentQuestion];
-        
+
         // Calculate dynamic box size with more padding
         let boxWidth = 900; // Increased width
         let boxHeight = 200 + q.options.length * 70; // Increased height and spacing
-        
+
         // Draw main box
         fill(0, 100, 255, 230); // Hope's box color
         stroke(0, 70, 180);
@@ -204,12 +204,12 @@ class Scene4 {
         // Draw options
         for (let i = 0; i < q.options.length; i++) {
             let y = height / 2 - boxHeight / 2 + 160 + i * 70; // Adjusted spacing
-            
+
             // Check hover state
             let isHovered = mouseX > width / 2 - boxWidth / 2 + 40 &&
-                            mouseX < width / 2 + boxWidth / 2 - 40 &&
-                            mouseY > y - 25 && mouseY < y + 25;
-            
+                mouseX < width / 2 + boxWidth / 2 - 40 &&
+                mouseY > y - 25 && mouseY < y + 25;
+
             // Draw option button
             fill(isHovered ? 'yellow' : 'white');
             stroke(0);
@@ -235,17 +235,17 @@ class Scene4 {
             this.inputBox.style('border-radius', '8px');
             this.inputBox.style('font-family', 'ARCADE');
             this.inputBox.style('cursor', 'pointer');
-            
+
             this.inputBox.mousePressed(() => {
                 console.log("Input box clicked");
                 this.inputBox.elt.focus();
             });
-            
+
             this.inputBox.input(() => {
                 console.log("Input value:", this.inputBox.value());
                 this.nameEntered = this.inputBox.value();
             });
-            
+
             this.inputBox.elt.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && this.inputBox.value().trim() !== '') {
                     console.log("Enter pressed, name entered:", this.inputBox.value());
@@ -296,7 +296,7 @@ class Scene4 {
         this.cannonPosition = createVector(this.hero.x, this.hero.y);
         this.cannonDirection = createVector(1, 0);
         this.cannonActive = true;
-        
+
         // Immediately stop the music and remove loop
         if (this.narrationMusic) {
             this.narrationMusic.setLoop(false);
@@ -308,14 +308,14 @@ class Scene4 {
     drawCannon() {
         if (this.cannonActive) {
             this.cannonFlash = !this.cannonFlash;
-            
+
             push();
             translate(this.cannonPosition.x, this.cannonPosition.y);
-            
+
             // Add recoil effect
             let recoil = sin(frameCount * 0.8) * 3;
             translate(recoil, 0);
-            
+
             // Missile body (yellow rectangle with rounded ends)
             fill(255, 255, 0); // Bright yellow
             stroke(70); // Dark gray outline
@@ -323,41 +323,41 @@ class Scene4 {
             rectMode(CENTER);
             let textWidth = this.cannonName.length * 15;
             rect(0, 0, textWidth + 40, 40, 10);
-            
+
             // Missile nose cone (yellow semicircle)
             fill(255, 255, 0);
             stroke(70);
             strokeWeight(2);
-            arc(textWidth/2 + 20, 0, 40, 40, -HALF_PI, HALF_PI);
-            
+            arc(textWidth / 2 + 20, 0, 40, 40, -HALF_PI, HALF_PI);
+
             // Trailing streaks
-            for(let i = 0; i < 5; i++) {
+            for (let i = 0; i < 5; i++) {
                 let alpha = map(i, 0, 5, 255, 0);
                 let streakLength = map(i, 0, 5, 20, 5);
                 stroke(255, 50, 0, alpha);
-                strokeWeight(4 - i/2);
-                line(-textWidth/2 - 20 - i*10, -5 + sin(frameCount * 0.2 + i) * 3, 
-                     -textWidth/2 - 20 - streakLength - i*10, -5 + sin(frameCount * 0.2 + i) * 3);
-                line(-textWidth/2 - 20 - i*10, 5 + cos(frameCount * 0.2 + i) * 3, 
-                     -textWidth/2 - 20 - streakLength - i*10, 5 + cos(frameCount * 0.2 + i) * 3);
+                strokeWeight(4 - i / 2);
+                line(-textWidth / 2 - 20 - i * 10, -5 + sin(frameCount * 0.2 + i) * 3,
+                    -textWidth / 2 - 20 - streakLength - i * 10, -5 + sin(frameCount * 0.2 + i) * 3);
+                line(-textWidth / 2 - 20 - i * 10, 5 + cos(frameCount * 0.2 + i) * 3,
+                    -textWidth / 2 - 20 - streakLength - i * 10, 5 + cos(frameCount * 0.2 + i) * 3);
             }
-            
+
             // Flame effect
             if (this.cannonFlash) {
-                for(let i = 0; i < 3; i++) {
+                for (let i = 0; i < 3; i++) {
                     fill(255, 50, 0, 150 - i * 50);
                     let flameSize = 20 - i * 5;
-                    ellipse(-textWidth/2 - 25 - i * 8, 0, flameSize, flameSize);
+                    ellipse(-textWidth / 2 - 25 - i * 8, 0, flameSize, flameSize);
                 }
             }
-            
+
             // Text
             fill(0); // Black text
             textSize(24); // Slightly smaller
             textStyle(BOLD);
             textAlign(CENTER, CENTER);
             text(this.cannonName, 0, 0);
-            
+
             pop();
 
             // Move the cannon
@@ -372,17 +372,20 @@ class Scene4 {
     }
 
     transitionToScene5() {
-        // Force stop the music and remove reference
-        if (this.narrationMusic) {
+        if (this.narrationMusic && this.narrationMusic.isPlaying()) {
             this.narrationMusic.stop();
-            this.narrationMusic.setLoop(false);  // Ensure loop is off
-            this.narrationMusic = null;
+            this.narrationMusic.disconnect();
         }
-        
-        // Remove any lingering audio contexts
+
+        // Stop all sounds and reset audio context
         getAudioContext().suspend();
-        
-        // Switch scene immediately without delay
-        switchScene(new Scene5());
+        getAudioContext().close().then(() => {
+            const allSounds = document.querySelectorAll('audio');
+            allSounds.forEach(sound => {
+                sound.pause();
+                sound.currentTime = 0;
+            });
+            switchScene(new Scene5());
+        });
     }
 }

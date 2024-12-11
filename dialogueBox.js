@@ -8,7 +8,7 @@ class DialogueBox {
         this.targetText = "";
         this.charIndex = 0;
         this.isTyping = false;
-        this.typewriterSpeed = 3;
+        this.typewriterSpeed = 1.5;
         this.displayDuration = 600;
         this.timer = 0;
         this.opacity = 255;

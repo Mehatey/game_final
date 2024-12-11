@@ -72,6 +72,38 @@ class Scene1 {
             height: 40,
             text: "Word Game"
         };
+
+        // Add button for Scene6
+        this.scene6Button = {
+            x: width/2 - 60,  // Centered horizontally
+            y: 20,            // Top position
+            width: 120,
+            height: 40,
+            text: "Battle Doubt",
+            isHovered: false
+        };
+
+        // Add debug button for Scene7
+        this.scene7Button = createButton('Go to Scene7');
+        this.scene7Button.position(50, height/2); // Middle left
+        this.scene7Button.mousePressed(() => {
+            // Remove button before switching scenes
+            this.scene7Button.remove();
+            switchScene(new Scene7());
+        });
+        
+        // Style the button
+        this.scene7Button.style('background-color', '#4CAF50');
+        this.scene7Button.style('border', 'none');
+        this.scene7Button.style('color', 'white');
+        this.scene7Button.style('padding', '15px 32px');
+        this.scene7Button.style('text-align', 'center');
+        this.scene7Button.style('text-decoration', 'none');
+        this.scene7Button.style('display', 'inline-block');
+        this.scene7Button.style('font-size', '16px');
+        this.scene7Button.style('margin', '4px 2px');
+        this.scene7Button.style('cursor', 'pointer');
+        this.scene7Button.style('border-radius', '4px');
     }
 
     preload() {
@@ -144,6 +176,9 @@ class Scene1 {
         textAlign(CENTER, CENTER);
         textSize(14);  // Slightly smaller text
         text("Skip to Scene 5", skipButtonX, skipButtonY);
+
+        // Draw Scene6 button
+        this.drawScene6Button();
     }
 
     drawPixelButton(button) {
@@ -256,5 +291,50 @@ class Scene1 {
             currentScene.preload();
             return;
         }
+
+        // Add Scene6 button check
+        if (mouseX > this.scene6Button.x && 
+            mouseX < this.scene6Button.x + this.scene6Button.width &&
+            mouseY > this.scene6Button.y && 
+            mouseY < this.scene6Button.y + this.scene6Button.height) {
+            console.log("Switching to Scene6");
+            try {
+                currentScene = new Scene6();
+                if (currentScene.preload) {
+                    currentScene.preload();
+                }
+                console.log("Successfully created Scene6");
+            } catch (error) {
+                console.error("Error creating Scene6:", error);
+            }
+        }
+    }
+
+    drawScene6Button() {
+        push();
+        this.scene6Button.isHovered = mouseX > this.scene6Button.x && 
+                                    mouseX < this.scene6Button.x + this.scene6Button.width &&
+                                    mouseY > this.scene6Button.y && 
+                                    mouseY < this.scene6Button.y + this.scene6Button.height;
+        
+        fill(this.scene6Button.isHovered ? color(100, 100, 255) : color(70, 70, 255));
+        stroke(255);
+        strokeWeight(2);
+        rect(this.scene6Button.x, this.scene6Button.y, 
+             this.scene6Button.width, this.scene6Button.height, 10);
+        
+        fill(255);
+        noStroke();
+        textAlign(CENTER, CENTER);
+        textSize(16);
+        text(this.scene6Button.text, 
+             this.scene6Button.x + this.scene6Button.width/2, 
+             this.scene6Button.y + this.scene6Button.height/2);
+        pop();
+    }
+
+    cleanup() {
+        this.scene7Button.remove();
+        // ... any other cleanup code ...
     }
 }
