@@ -72,6 +72,7 @@ class Scene4 {
         this.hope.preload();
         this.dialogueBox.typingSound = loadSound('assets/sounds/typing.mp3');
 
+        // Load and play ambient music
         soundFormats('mp3');
         loadSound('assets/sounds/ambient.mp3',
             (sound) => {
@@ -137,9 +138,22 @@ class Scene4 {
             }
         }
 
+        // Draw cannon if active
+        if (this.cannonActive) {
+            this.drawCannon();
+            
+            // Check if cannon has reached the edge and stop music
+            if (this.cannonPosition.x > width) {
+                if (this.narrationMusic && this.narrationMusic.isPlaying()) {
+                    console.log("Stopping ambient music");
+                    this.narrationMusic.stop();
+                    this.narrationMusic = null;
+                }
+            }
+        }
+
         this.dialogueBox.update();
         this.dialogueBox.draw();
-        this.drawCannon(); // Draw the cannon effect
     }
 
     keyPressed() {
@@ -149,9 +163,12 @@ class Scene4 {
     }
 
     cleanup() {
-        if (this.narrationMusic && this.narrationMusic.isPlaying()) {
+        if (this.narrationMusic) {
+            this.narrationMusic.setLoop(false);
             this.narrationMusic.stop();
+            this.narrationMusic = null;
         }
+        
         if (this.inputBox) {
             this.inputBox.remove();
             this.inputBox = null;
@@ -236,6 +253,7 @@ class Scene4 {
                     this.inputBox.remove();
                     this.inputBox = null;
                     this.showingPostDialogue = true;
+                    localStorage.setItem('cannonName', this.nameEntered);
                 }
             });
         }
@@ -276,8 +294,15 @@ class Scene4 {
     activateCannon() {
         this.cannonName = this.nameEntered;
         this.cannonPosition = createVector(this.hero.x, this.hero.y);
-        this.cannonDirection = createVector(1, 0); // Fire horizontally to the right
+        this.cannonDirection = createVector(1, 0);
         this.cannonActive = true;
+        
+        // Immediately stop the music and remove loop
+        if (this.narrationMusic) {
+            this.narrationMusic.setLoop(false);
+            this.narrationMusic.stop();
+            this.narrationMusic = null;
+        }
     }
 
     drawCannon() {
@@ -338,10 +363,26 @@ class Scene4 {
             // Move the cannon
             this.cannonPosition.add(p5.Vector.mult(this.cannonDirection, 12));
 
-            // Deactivate when off-screen
+            // When cannon reaches edge, transition to Scene5
             if (this.cannonPosition.x > width) {
                 this.cannonActive = false;
+                this.transitionToScene5();
             }
         }
+    }
+
+    transitionToScene5() {
+        // Force stop the music and remove reference
+        if (this.narrationMusic) {
+            this.narrationMusic.stop();
+            this.narrationMusic.setLoop(false);  // Ensure loop is off
+            this.narrationMusic = null;
+        }
+        
+        // Remove any lingering audio contexts
+        getAudioContext().suspend();
+        
+        // Switch scene immediately without delay
+        switchScene(new Scene5());
     }
 }

@@ -27,12 +27,24 @@ function mousePressed() {
 }
 
 function keyPressed() {
-    if (currentScene) {
+    if (currentScene && currentScene.keyPressed) {
         currentScene.keyPressed();
     }
 }
 
 function switchScene(newScene) {
+    // Clean up the current scene before switching
+    if (currentScene && currentScene.cleanup) {
+        currentScene.cleanup();
+    }
+    
+    // Stop all currently playing sounds
+    if (getAudioContext().state === 'running') {
+        getAudioContext().suspend();
+        getAudioContext().resume();
+    }
+    
+    // Switch to new scene
     currentScene = newScene;
     if (currentScene.preload) {
         currentScene.preload();

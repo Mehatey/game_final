@@ -17,6 +17,20 @@ class DialogueBox {
         this.defaultStrokeColor = color(50, 50, 50);
         this.hopeBoxColor = color(0, 100, 255, 230);
         this.hopeStrokeColor = color(0, 70, 180);
+        this.heroBoxColor = color(70, 70, 70, 230);
+        this.heroStrokeColor = color(50, 50, 50);
+        this.fearBoxColor = color(128, 0, 128, 230);
+        this.fearStrokeColor = color(90, 0, 90);
+        this.doubtBoxColor = color(180, 0, 0, 230);
+        this.doubtStrokeColor = color(130, 0, 0);
+        this.regretBoxColor = color(0, 0, 139, 230);    // Dark blue for regret
+        this.regretStrokeColor = color(0, 0, 100);      // Slightly darker blue for stroke
+        this.angerBoxColor = color(0, 100, 0, 230);     // Dark green for anger
+        this.angerStrokeColor = color(0, 70, 0);        // Darker green for stroke
+        this.procastBoxColor = color(255, 140, 0, 230);    // Orange for procrastination
+        this.procastStrokeColor = color(200, 110, 0);      // Darker orange for stroke
+        this.insecurityBoxColor = color(139, 0, 0, 230);    // Dark crimson for insecurity
+        this.insecurityStrokeColor = color(100, 0, 0);      // Darker crimson for stroke
         this.boxColor = this.defaultBoxColor;
         this.strokeColor = this.defaultStrokeColor;
         this.boxWidth = width - 100;
@@ -40,6 +54,27 @@ class DialogueBox {
         if (name === 'Hope') {
             this.boxColor = this.hopeBoxColor;
             this.strokeColor = this.hopeStrokeColor;
+        } else if (name === 'Fear') {
+            this.boxColor = this.fearBoxColor;
+            this.strokeColor = this.fearStrokeColor;
+        } else if (name === 'Doubt') {
+            this.boxColor = this.doubtBoxColor;
+            this.strokeColor = this.doubtStrokeColor;
+        } else if (name === 'Regret') {
+            this.boxColor = this.regretBoxColor;
+            this.strokeColor = this.regretStrokeColor;
+        } else if (name === 'Anger') {
+            this.boxColor = this.angerBoxColor;
+            this.strokeColor = this.angerStrokeColor;
+        } else if (name === 'Procrastination') {
+            this.boxColor = this.procastBoxColor;
+            this.strokeColor = this.procastStrokeColor;
+        } else if (name === 'Hero') {
+            this.boxColor = this.heroBoxColor;
+            this.strokeColor = this.heroStrokeColor;
+        } else if (name === 'Insecurity') {
+            this.boxColor = this.insecurityBoxColor;
+            this.strokeColor = this.insecurityStrokeColor;
         } else {
             this.boxColor = this.defaultBoxColor;
             this.strokeColor = this.defaultStrokeColor;
