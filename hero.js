@@ -44,29 +44,17 @@ class Hero {
 
         let moving = false;
 
-        if (keyIsDown(LEFT_ARROW)) {
-            this.x -= this.speed;
-            this.direction = 'left';
-            this.currentImage = this.images.left;
-            moving = true;
+        if (keyIsDown(LEFT_ARROW) || keyIsDown(65)) {  // Left arrow or 'A'
+            this.x = max(this.x - 5, 0);
         }
-        if (keyIsDown(RIGHT_ARROW)) {
-            this.x += this.speed;
-            this.direction = 'right';
-            this.currentImage = this.images.right;
-            moving = true;
+        if (keyIsDown(RIGHT_ARROW) || keyIsDown(68)) {  // Right arrow or 'D'
+            this.x = min(this.x + 5, width);
         }
-        if (keyIsDown(UP_ARROW)) {
-            this.y -= this.speed;
-            this.direction = 'up';
-            this.currentImage = this.images.up;
-            moving = true;
+        if (keyIsDown(UP_ARROW) || keyIsDown(87)) {  // Up arrow or 'W'
+            this.y = max(this.y - 5, 0);
         }
-        if (keyIsDown(DOWN_ARROW)) {
-            this.y += this.speed;
-            this.direction = 'down';
-            this.currentImage = this.images.down;
-            moving = true;
+        if (keyIsDown(DOWN_ARROW) || keyIsDown(83)) {  // Down arrow or 'S'
+            this.y = min(this.y + 5, height);
         }
 
         if (!moving) {

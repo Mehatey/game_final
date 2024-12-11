@@ -26,6 +26,8 @@ class Hope {
             shake: 0,
             ripple: 0
         };
+        this.shouldFadeOut = false;
+        this.opacity = 255;
     }
 
     preload() {
@@ -93,6 +95,14 @@ class Hope {
                 this.size = this.targetSize;
             }
         }
+        
+        // Add fade out when dialogue ends
+        if (this.shouldFadeOut) {
+            this.opacity = max(0, this.opacity - 5);
+            if (this.opacity === 0) {
+                this.isVisible = false;
+            }
+        }
     }
 
     draw() {
@@ -117,5 +127,9 @@ class Hope {
         return {
             color: this.dialogueColor
         };
+    }
+
+    startFadeOut() {
+        this.shouldFadeOut = true;
     }
 }

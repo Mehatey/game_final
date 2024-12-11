@@ -62,6 +62,15 @@ class Scene1 {
         };
         this.loadGameButton = new Button(width / 2, height / 2 + 50, "Load Game");
         this.beginJourneyButton = new Button(width / 2, height / 2, "Begin Journey");
+        
+        // Adjust button position to be more visible
+        this.wordGameButton = {
+            x: 50,  // Changed from width-150 to 50 for better visibility
+            y: 50,  // Changed from height-50 to 50 to place at top
+            width: 120,
+            height: 40,
+            text: "Word Game"
+        };
     }
 
     preload() {
@@ -70,6 +79,8 @@ class Scene1 {
     }
 
     draw() {
+        background(0);  // Make sure this is here
+        
         // Draw background with proper scaling
         let scale = Math.max(windowWidth / this.backgroundImage.width, windowHeight / this.backgroundImage.height);
         let newWidth = this.backgroundImage.width * scale;
@@ -87,6 +98,25 @@ class Scene1 {
         // Draw buttons
         this.drawPixelButton(this.buttons.loadGame);
         this.drawPixelButton(this.buttons.beginJourney);
+        
+        // Draw word game button with brighter colors
+        push();
+        // Button background
+        fill(0, 100, 255);  // Brighter blue
+        stroke(255);
+        strokeWeight(3);
+        rect(this.wordGameButton.x, this.wordGameButton.y, 
+             this.wordGameButton.width, this.wordGameButton.height, 10);
+        
+        // Button text
+        fill(255);
+        noStroke();
+        textAlign(CENTER, CENTER);
+        textSize(20);  // Larger text
+        text(this.wordGameButton.text, 
+             this.wordGameButton.x + this.wordGameButton.width/2, 
+             this.wordGameButton.y + this.wordGameButton.height/2);
+        pop();
     }
 
     drawPixelButton(button) {
@@ -128,6 +158,21 @@ class Scene1 {
     }
 
     mousePressed() {
+        // Check word game button
+        if (mouseX > this.wordGameButton.x && 
+            mouseX < this.wordGameButton.x + this.wordGameButton.width &&
+            mouseY > this.wordGameButton.y && 
+            mouseY < this.wordGameButton.y + this.wordGameButton.height) {
+            
+            let scene3 = new Scene3();
+            scene3.preload();  // Load assets
+            scene3.assetsLoaded = true;  // Ensure assets are marked as loaded
+            scene3.dialogueState = 'playing';  // Skip to word game
+            scene3.hopeEntered = true;  // Ensure Hope state is set
+            scene3.currentDialogue = scene3.heroDialogues.length;  // Skip all dialogue
+            currentScene = scene3;
+        }
+        
         // Check if click is within loadGame button bounds
         if (mouseX > this.buttons.loadGame.x - this.buttons.loadGame.width/2 && 
             mouseX < this.buttons.loadGame.x + this.buttons.loadGame.width/2 && 
