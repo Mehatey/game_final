@@ -1,44 +1,32 @@
-let grid;
-let cols;
-let rows;
-let resolution = 20;
+let currentScene;
+
+function preload() {
+    currentScene = new Scene1();
+    currentScene.preload();
+}
 
 function setup() {
-    createCanvas(400, 400);
-    cols = width / resolution;
-    rows = height / resolution;
-    grid = make2DArray(cols, rows);
+    createCanvas(windowWidth, windowHeight);
 }
 
 function draw() {
-    background(220);
-    drawGrid();
-}
-
-function make2DArray(cols, rows) {
-    let arr = new Array(cols);
-    for (let i = 0; i < arr.length; i++) {
-        arr[i] = new Array(rows).fill(255); // Fill with white color
-    }
-    return arr;
-}
-
-function drawGrid() {
-    for (let i = 0; i < cols; i++) {
-        for (let j = 0; j < rows; j++) {
-            let x = i * resolution;
-            let y = j * resolution;
-            fill(grid[i][j]);
-            stroke(0);
-            rect(x, y, resolution, resolution);
-        }
+    if (currentScene && currentScene.draw) {
+        currentScene.draw();
     }
 }
 
 function mousePressed() {
-    let x = floor(mouseX / resolution);
-    let y = floor(mouseY / resolution);
-    if (x >= 0 && x < cols && y >= 0 && y < rows) {
-        grid[x][y] = color(random(255), random(255), random(255)); // Random color
+    if (currentScene && currentScene.mousePressed) {
+        currentScene.mousePressed();
     }
+}
+
+function keyPressed() {
+    if (currentScene && currentScene.keyPressed) {
+        currentScene.keyPressed();
+    }
+}
+
+function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
 }

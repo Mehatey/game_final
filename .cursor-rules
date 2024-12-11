@@ -1,0 +1,46 @@
+# Cursor Rules for Game Development (HTML, CSS, JS)
+
+## Scene Management
+- Maintain a modular structure where each scene (e.g., start, gameplay, end) is defined as a separate function or module.
+- Do not modify existing scenes or transitions unless explicitly instructed.
+- Ensure scene transitions are seamless and logically connected.
+- Validate all scene-related elements (e.g., buttons, event listeners) before integrating.
+
+## File and Path Management
+- All asset paths must be consistent and verified:
+
+- Do not assume relative paths. Always confirm path accuracy before adding or modifying.
+- When creating new assets or files, ensure they are stored in their correct directories and referenced properly.
+
+## Preserve Existing Features
+- Do not modify or overwrite existing functionality unless explicitly requested.
+- New features must integrate seamlessly without breaking prior implementations.
+- Retain all variable names and structures unless a significant conflict arises.
+
+## JavaScript Logic
+- Use modular JavaScript with separate files for:
+  - Core game mechanics (e.g., player movement, collision detection).
+  - UI components (e.g., health bar, motivation bar).
+  - Scene management (e.g., switching scenes, managing game state).
+- Use a global game state object for tracking key properties like scenes, health, and score:
+  const gameState = {
+    currentScene: 'start',
+    playerHealth: 100,
+    score: 0,
+  };
+- Any additions should update the game state without affecting unrelated properties.
+
+## CSS and Styling
+- All styling must go into the `styles/` directory.
+- Do not overwrite global styles unless explicitly instructed.
+- Ensure responsiveness and cross-browser compatibility.
+
+## Debugging and Validation
+- Check for JavaScript errors in the console and resolve them before suggesting new features.
+- Validate HTML, CSS, and JavaScript for syntax errors and ensure smooth integration.
+- Do not introduce performance bottlenecks (e.g., overly complex loops or unoptimized assets).
+
+## Communication and Updates
+- Confirm with the user before removing or replacing previously implemented functionality.
+- Provide clear comments for complex logic or integrations.
+- When handling new requests, ensure they align with the current structure and do not conflict with existing elements.
