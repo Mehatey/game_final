@@ -1,5 +1,8 @@
 class Scene6 {
     constructor() {
+        // Add initialization flag at the start
+        this.isInitialized = false;
+        
         // Hero with correct image path
         this.hero = {
             x: 100,
@@ -77,6 +80,8 @@ class Scene6 {
                 size: this.missileSize
             });
         }
+
+        this.soundsLoaded = false;
     }
 
     preload() {
@@ -87,19 +92,32 @@ class Scene6 {
         this.missile6 = loadImage('assets/animations/missiles/missile6.gif');
         this.hero.image = loadImage('assets/characters/meh0/hero1still.png');
 
-        // Load sound
+        // Load sounds with callbacks
         soundFormats('mp3');
         this.scarySound = loadSound('assets/sounds/scary.mp3', () => {
-            // Start playing as soon as it's loaded
-            if (!this.soundStarted) {
-                this.scarySound.loop();
-                this.soundStarted = true;
-            }
+            this.hurtSound = loadSound('assets/sounds/hurt.mp3', () => {
+                this.soundsLoaded = true;
+            });
         });
-        this.hurtSound = loadSound('assets/sounds/hurt.mp3');
+    }
+
+    // Add this method to start sounds after scene is fully loaded
+    startSounds() {
+        if (this.soundsLoaded && this.scarySound && !this.soundStarted) {
+            this.scarySound.loop();
+            this.soundStarted = true;
+        }
     }
 
     draw() {
+        if (!this.isInitialized) {
+            this.setup();
+            // Only try to start sounds if they're loaded
+            if (this.soundsLoaded) {
+                this.startSounds();
+            }
+        }
+
         if (this.gameOver) {
             this.showGameOver();
             return;
@@ -435,10 +453,34 @@ class Scene6 {
         textSize(24);
         if (this.doubtHealth <= 0) {
             text('Victory!', width / 2, height / 2);
+            // Switch to Scene7 after victory
+            if (mouseIsPressed) {
+                clear();
+                background(0);
+                let scene7 = new Scene7();
+                scene7.preload();
+                currentScene = scene7;
+            }
         } else if (this.gameTimer <= 0) {
             text('Time Up!', width / 2, height / 2);
+            // Allow restart on click
+            if (mouseIsPressed) {
+                clear();
+                background(0);
+                let newScene6 = new Scene6();
+                newScene6.preload();
+                currentScene = newScene6;
+            }
         } else {
             text('Try Again', width / 2, height / 2);
+            // Allow restart on click
+            if (mouseIsPressed) {
+                clear();
+                background(0);
+                let newScene6 = new Scene6();
+                newScene6.preload();
+                currentScene = newScene6;
+            }
         }
         pop();
 
@@ -494,6 +536,44 @@ class Scene6 {
             }
 
             pop();
+        }
+    }
+
+    // Add setup method to properly initialize the scene
+    setup() {
+        if (!this.isInitialized) {
+            clear();
+            background(0);
+            this.isInitialized = true;
+            
+            // Reset all game states to initial values
+            this.motivation = 100;
+            this.doubtHealth = 100;
+            this.doubtY = height / 2;
+            this.gameTimer = 60;
+            this.lastTime = millis();
+            this.gameOver = false;
+            
+            // Reset hero position
+            this.hero.x = 100;
+            this.hero.y = height / 2;
+            
+            // Clear all arrays
+            this.missiles = [];
+            this.redOrbs = [];
+            this.bursts = [];
+            
+            // Initialize initial set of missiles
+            for (let i = 0; i < this.maxMissiles; i++) {
+                this.missiles.push({
+                    x: random(width),
+                    y: random(height),
+                    speedX: random(-5, 5),
+                    speedY: random(-5, 5),
+                    type: random(1) < 0.5 ? 'missile2' : 'missile6',
+                    size: this.missileSize
+                });
+            }
         }
     }
 }

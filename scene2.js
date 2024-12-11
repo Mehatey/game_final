@@ -42,7 +42,7 @@ class Scene2 {
 
     preload() {
         this.heroAnimation = loadImage('./assets/characters/meh0/hero1ani.gif');
-        
+
         for (let i = 1; i <= this.totalVideos; i++) {
             let videoPath = `./assets/videos/intro/meh0${i}.mp4`;
             let video = createVideo(videoPath, () => {
@@ -55,7 +55,17 @@ class Scene2 {
                 video.style('top', '0');
                 video.style('z-index', '999');
             });
-            video.elt.onended = () => this.playNextVideo();
+            video.elt.onended = () => {
+                if (i === this.totalVideos) {
+                    this.cleanup();
+                    setTimeout(() => {
+                        currentScene = new Scene3();
+                        currentScene.preload();
+                    }, 1000);
+                } else {
+                    this.playNextVideo();
+                }
+            };
             this.videos.push(video);
         }
     }
@@ -97,15 +107,15 @@ class Scene2 {
             stroke(255);
             strokeWeight(2);
             rectMode(CENTER);
-            rect(width/2, height/2, this.textBoxWidth, this.textBoxHeight, 5);
+            rect(width / 2, height / 2, this.textBoxWidth, this.textBoxHeight, 5);
             pop();
 
-            if (frameCount % 3 === 0 && 
-                this.currentSentence < this.sentences.length && 
+            if (frameCount % 3 === 0 &&
+                this.currentSentence < this.sentences.length &&
                 !this.waitingForNext) {
-                
+
                 const currentSentenceText = this.sentences[this.currentSentence];
-                
+
                 if (this.charIndex < currentSentenceText.length) {
                     this.currentText += currentSentenceText.charAt(this.charIndex);
                     this.charIndex++;
@@ -132,7 +142,7 @@ class Scene2 {
             textAlign(CENTER, CENTER);
             textSize(24);
             fill(255);
-            text(this.currentText, width/2, height/2);
+            text(this.currentText, width / 2, height / 2);
             pop();
 
         } else if (this.showHero) {
@@ -143,13 +153,13 @@ class Scene2 {
             } else {
                 push();
                 imageMode(CENTER);
-                image(this.heroAnimation, width/2, height/2, 600, 600);
-                
+                image(this.heroAnimation, width / 2, height / 2, 600, 600);
+
                 if (this.showIntroText) {
                     textAlign(CENTER, CENTER);
                     textSize(30);
                     fill(255);
-                    text(`Hey ${this.playerName}, click on me to know my story`, width/2, height/2 + 350);
+                    text(`Hey ${this.playerName}, click on me to know my story`, width / 2, height / 2 + 350);
                     this.clickable = true;
                 }
                 pop();
@@ -161,7 +171,7 @@ class Scene2 {
                 stroke(255);
                 strokeWeight(2);
                 rectMode(CENTER);
-                rect(width/2, height/2 - 100, this.centerSquare.size, this.centerSquare.size);
+                rect(width / 2, height / 2 - 100, this.centerSquare.size, this.centerSquare.size);
                 pop();
 
                 if (this.isGrowing) {
@@ -184,8 +194,8 @@ class Scene2 {
                 this.squares.pop();
             } else if (!this.centerSquare) {
                 this.centerSquare = {
-                    x: width/2,
-                    y: height/2,
+                    x: width / 2,
+                    y: height / 2,
                     size: this.squareSize
                 };
                 this.squares = [];
@@ -197,8 +207,8 @@ class Scene2 {
     mousePressed() {
         if (this.showHero && this.clickable && !this.videoPlaying) {
             let heroArea = {
-                x: width/2 - 300,
-                y: height/2 - 300,
+                x: width / 2 - 300,
+                y: height / 2 - 300,
                 width: 600,
                 height: 600
             };
@@ -253,7 +263,7 @@ class Scene2 {
     startVideoSequence() {
         this.videoPlaying = true;
         this.videoIndex = 0;
-        
+
         if (this.videos.length > 0 && this.videos[0]) {
             this.currentVideo = this.videos[0];
             this.currentVideo.size(windowWidth, windowHeight);
@@ -270,9 +280,9 @@ class Scene2 {
             this.currentVideo.hide();
             this.currentVideo.stop();
         }
-        
+
         this.videoIndex++;
-        
+
         if (this.videoIndex < this.totalVideos && this.videos[this.videoIndex]) {
             this.currentVideo = this.videos[this.videoIndex];
             this.currentVideo.size(windowWidth, windowHeight);
@@ -291,27 +301,27 @@ class Scene2 {
     drawNamePrompt() {
         push();
         textAlign(CENTER, CENTER);
-        
+
         fill(0);
         stroke(255);
         strokeWeight(2);
         rectMode(CENTER);
-        rect(width/2, height/2 - 100, 150, 150);
-        
+        rect(width / 2, height / 2 - 100, 150, 150);
+
         textSize(30);
         fill(255);
         noStroke();
-        text("Name your Square", width/2, height/2 + 50);
-        
+        text("Name your Square", width / 2, height / 2 + 50);
+
         fill(0);
         stroke(255);
         rectMode(CENTER);
-        rect(width/2, height/2 + 100, 300, 50);
-        
+        rect(width / 2, height / 2 + 100, 300, 50);
+
         fill(255);
         noStroke();
         textSize(24);
-        text(this.playerName + (this.showCursor ? "|" : ""), width/2, height/2 + 100);
+        text(this.playerName + (this.showCursor ? "|" : ""), width / 2, height / 2 + 100);
         pop();
     }
 
@@ -333,16 +343,37 @@ class Scene2 {
         if (frameCount % 2 === 0 && this.squares.length < this.maxSquares) {
             let angle = this.squares.length * 0.5;
             let radius = this.squares.length * 2;
-            let x = width/2 + cos(angle) * radius;
-            let y = height/2 + sin(angle) * radius;
-            
+            let x = width / 2 + cos(angle) * radius;
+            let y = height / 2 + sin(angle) * radius;
+
             if (x >= 0 && x <= width && y >= 0 && y <= height) {
-                this.squares.push({x, y});
+                this.squares.push({ x, y });
             }
         }
     }
 
     reverseSpiral() {
         this.reversing = true;
+    }
+
+    cleanup() {
+        // Clean up all videos
+        this.videos.forEach(video => {
+            video.stop();
+            video.remove();
+        });
+        
+        // Clear the videos array
+        this.videos = [];
+        
+        // Clear current video
+        if (this.currentVideo) {
+            this.currentVideo.stop();
+            this.currentVideo.remove();
+            this.currentVideo = null;
+        }
+        
+        clear();
+        background(0);
     }
 }

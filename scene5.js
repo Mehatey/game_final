@@ -576,8 +576,25 @@ class Scene5 {
                     let dialogue = this.insecurityDialogues[this.insecurityCurrentDialogue];
                     this.dialogueBox.startDialogue(dialogue.text, dialogue.speaker);
                     this.insecurityCurrentDialogue++;
+                    
+                    // Check if this was the last dialogue
+                    if (this.insecurityCurrentDialogue === this.insecurityDialogues.length && 
+                        dialogue.text.includes("Defeat Insecurity, and you'll find belief in yourself")) {
+                        
+                        // Stop sounds and cleanup
+                        if (this.scarySound && this.scarySound.isPlaying()) {
+                            this.scarySound.stop();
+                        }
+                        this.cleanup();
+                        
+                        // Clear and transition
+                        clear();
+                        background(0);
+                        let scene6 = new Scene6();
+                        scene6.preload();
+                        currentScene = scene6;
+                    }
                 }
-                // No else block needed for the final enemy
             }
         }
 

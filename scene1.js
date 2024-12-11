@@ -1,48 +1,5 @@
-class Button {
-    constructor(x, y, text) {
-        this.x = x;
-        this.y = y;
-        this.width = 200;
-        this.height = 50;
-        this.text = text;
-        this.isHovered = false;
-        this.baseColor = color(50);
-        this.hoverColor = color(100);
-        this.textColor = color(255);
-        this.cornerRadius = 10;
-    }
-
-    draw() {
-        push();
-        this.isHovered = this.checkHover();
-        rectMode(CENTER);
-        fill(this.isHovered ? this.hoverColor : this.baseColor);
-        stroke(255);
-        strokeWeight(3);
-        rect(this.x, this.y, this.width, this.height, this.cornerRadius);
-        fill(this.textColor);
-        noStroke();
-        textAlign(CENTER, CENTER);
-        textSize(24);
-        text(this.text, this.x, this.y);
-        pop();
-    }
-
-    checkHover() {
-        return mouseX > this.x - this.width / 2 &&
-            mouseX < this.x + this.width / 2 &&
-            mouseY > this.y - this.height / 2 &&
-            mouseY < this.y + this.height / 2;
-    }
-
-    isClicked() {
-        return this.checkHover();
-    }
-}
-
 class Scene1 {
     constructor() {
-        this.state = 'menu';
         this.font = null;
         this.backgroundImage = null;
         this.buttons = {
@@ -61,49 +18,100 @@ class Scene1 {
                 text: "BEGIN JOURNEY"
             }
         };
-        this.loadGameButton = new Button(width / 2, height / 2 + 50, "Load Game");
-        this.beginJourneyButton = new Button(width / 2, height / 2, "Begin Journey");
 
-        // Adjust button position to be more visible
-        this.wordGameButton = {
-            x: 50,  // Changed from width-150 to 50 for better visibility
-            y: 50,  // Changed from height-50 to 50 to place at top
-            width: 120,
-            height: 40,
-            text: "Word Game"
-        };
-
-        // Add button for Scene6
-        this.scene6Button = {
-            x: width/2 - 60,  // Centered horizontally
-            y: 20,            // Top position
-            width: 120,
-            height: 40,
-            text: "Battle Doubt",
-            isHovered: false
-        };
-
-        // Add debug button for Scene7
-        this.scene7Button = createButton('Go to Scene7');
-        this.scene7Button.position(50, height/2); // Middle left
-        this.scene7Button.mousePressed(() => {
-            // Remove button before switching scenes
-            this.scene7Button.remove();
-            switchScene(new Scene7());
+        // Add debug button for end of video sequence
+        this.videoEndButton = createButton('Go to Video End');
+        this.videoEndButton.position(50, height / 2 + 50);
+        this.videoEndButton.mousePressed(() => {
+            if (this.videoEndButton) {
+                this.videoEndButton.remove();
+            }
+            clear();
+            background(0);
+            let scene2 = new Scene2();
+            scene2.preload();
+            scene2.videoIndex = scene2.totalVideos - 1;
+            currentScene = scene2;
+            scene2.currentVideo = scene2.videos[scene2.videoIndex];
+            scene2.videoPlaying = true;
+            scene2.currentVideo.play();
         });
         
         // Style the button
-        this.scene7Button.style('background-color', '#4CAF50');
-        this.scene7Button.style('border', 'none');
-        this.scene7Button.style('color', 'white');
-        this.scene7Button.style('padding', '15px 32px');
-        this.scene7Button.style('text-align', 'center');
-        this.scene7Button.style('text-decoration', 'none');
-        this.scene7Button.style('display', 'inline-block');
-        this.scene7Button.style('font-size', '16px');
-        this.scene7Button.style('margin', '4px 2px');
-        this.scene7Button.style('cursor', 'pointer');
-        this.scene7Button.style('border-radius', '4px');
+        this.videoEndButton.style('background-color', '#4CAF50');
+        this.videoEndButton.style('border', 'none');
+        this.videoEndButton.style('color', 'white');
+        this.videoEndButton.style('padding', '15px 32px');
+        this.videoEndButton.style('text-align', 'center');
+        this.videoEndButton.style('text-decoration', 'none');
+        this.videoEndButton.style('display', 'inline-block');
+        this.videoEndButton.style('font-size', '16px');
+        this.videoEndButton.style('margin', '4px 2px');
+        this.videoEndButton.style('cursor', 'pointer');
+        this.videoEndButton.style('border-radius', '4px');
+
+        // Add debug button for Scene5
+        this.scene5Button = createButton('Go to Scene5');
+        this.scene5Button.position(50, height/2 + 100); // Below video end button
+        this.scene5Button.mousePressed(() => {
+            if (this.videoEndButton) {
+                this.videoEndButton.remove();
+            }
+            if (this.scene5Button) {
+                this.scene5Button.remove();
+            }
+            clear();
+            background(0);
+            let scene5 = new Scene5();
+            scene5.preload();
+            currentScene = scene5;
+        });
+        
+        // Style the button (same as other debug buttons)
+        this.scene5Button.style('background-color', '#4CAF50');
+        this.scene5Button.style('border', 'none');
+        this.scene5Button.style('color', 'white');
+        this.scene5Button.style('padding', '15px 32px');
+        this.scene5Button.style('text-align', 'center');
+        this.scene5Button.style('text-decoration', 'none');
+        this.scene5Button.style('display', 'inline-block');
+        this.scene5Button.style('font-size', '16px');
+        this.scene5Button.style('margin', '4px 2px');
+        this.scene5Button.style('cursor', 'pointer');
+        this.scene5Button.style('border-radius', '4px');
+
+        // Add debug button for Scene6
+        this.scene6Button = createButton('Go to Scene6');
+        this.scene6Button.position(50, height/2 + 150); // Below other debug buttons
+        this.scene6Button.mousePressed(() => {
+            if (this.videoEndButton) {
+                this.videoEndButton.remove();
+            }
+            if (this.scene5Button) {
+                this.scene5Button.remove();
+            }
+            if (this.scene6Button) {
+                this.scene6Button.remove();
+            }
+            clear();
+            background(0);
+            let scene6 = new Scene6();
+            scene6.preload();
+            currentScene = scene6;
+        });
+        
+        // Style the button (same as other debug buttons)
+        this.scene6Button.style('background-color', '#4CAF50');
+        this.scene6Button.style('border', 'none');
+        this.scene6Button.style('color', 'white');
+        this.scene6Button.style('padding', '15px 32px');
+        this.scene6Button.style('text-align', 'center');
+        this.scene6Button.style('text-decoration', 'none');
+        this.scene6Button.style('display', 'inline-block');
+        this.scene6Button.style('font-size', '16px');
+        this.scene6Button.style('margin', '4px 2px');
+        this.scene6Button.style('cursor', 'pointer');
+        this.scene6Button.style('border-radius', '4px');
     }
 
     preload() {
@@ -112,8 +120,6 @@ class Scene1 {
     }
 
     draw() {
-        background(0);  // Make sure this is here
-
         // Draw background with proper scaling
         let scale = Math.max(windowWidth / this.backgroundImage.width, windowHeight / this.backgroundImage.height);
         let newWidth = this.backgroundImage.width * scale;
@@ -131,54 +137,6 @@ class Scene1 {
         // Draw buttons
         this.drawPixelButton(this.buttons.loadGame);
         this.drawPixelButton(this.buttons.beginJourney);
-
-        // Draw word game button with brighter colors
-        push();
-        // Button background
-        fill(0, 100, 255);  // Brighter blue
-        stroke(255);
-        strokeWeight(3);
-        rect(this.wordGameButton.x, this.wordGameButton.y,
-            this.wordGameButton.width, this.wordGameButton.height, 10);
-
-        // Button text
-        fill(255);
-        noStroke();
-        textAlign(CENTER, CENTER);
-        textSize(20);  // Larger text
-        text(this.wordGameButton.text,
-            this.wordGameButton.x + this.wordGameButton.width / 2,
-            this.wordGameButton.y + this.wordGameButton.height / 2);
-        pop();
-
-        // Add debug button for Scene 4
-        push();
-        fill(100, 100, 255);
-        rect(width - 150, height - 50, 120, 40, 10);
-        fill(255);
-        textAlign(CENTER, CENTER);
-        textSize(16);
-        text("Skip to Scene 4", width - 90, height - 30);
-        pop();
-
-        // Debug skip button - adjusted position and size
-        fill(100);
-        noStroke();
-        rectMode(CENTER);
-        let skipButtonX = width - 100;
-        let skipButtonY = height - 30;
-        let buttonWidth = 150;  // Made wider to fit text
-        let buttonHeight = 40;
-        rect(skipButtonX, skipButtonY, buttonWidth, buttonHeight, 8);
-        
-        // Text alignment for skip button
-        fill(255);
-        textAlign(CENTER, CENTER);
-        textSize(14);  // Slightly smaller text
-        text("Skip to Scene 5", skipButtonX, skipButtonY);
-
-        // Draw Scene6 button
-        this.drawScene6Button();
     }
 
     drawPixelButton(button) {
@@ -220,121 +178,36 @@ class Scene1 {
     }
 
     mousePressed() {
-        // Scene 4 debug button
-        if (mouseX > width - 150 && mouseX < width - 30 &&
-            mouseY > height - 50 && mouseY < height - 10) {
-            console.log("Debug button clicked");
-            // Remove or comment out this line if cleanup is not needed
-            // this.cleanup();
-            try {
-                currentScene = new Scene4();
-                if (currentScene.preload) {
-                    currentScene.preload();
-                }
-                // Skip directly to questions
-                currentScene.currentDialogue = currentScene.dialogues.length;
-                console.log("Successfully created Scene4");
-            } catch (error) {
-                console.error("Error creating Scene4:", error);
+        if (this.isMouseOver(this.buttons.loadGame)) {
+            console.log('Load Game clicked');
+        }
+        if (this.isMouseOver(this.buttons.beginJourney)) {
+            // Remove all debug buttons before starting normal game flow
+            if (this.videoEndButton) {
+                this.videoEndButton.remove();
             }
-        }
-
-        // Check word game button
-        if (mouseX > this.wordGameButton.x &&
-            mouseX < this.wordGameButton.x + this.wordGameButton.width &&
-            mouseY > this.wordGameButton.y &&
-            mouseY < this.wordGameButton.y + this.wordGameButton.height) {
-
-            let scene3 = new Scene3();
-            scene3.preload();  // Load assets
-            scene3.assetsLoaded = true;  // Ensure assets are marked as loaded
-            scene3.dialogueState = 'playing';  // Skip to word game
-            scene3.hopeEntered = true;  // Ensure Hope state is set
-            scene3.currentDialogue = scene3.heroDialogues.length;  // Skip all dialogue
-            currentScene = scene3;
-        }
-
-        // Check if click is within loadGame button bounds
-        if (mouseX > this.buttons.loadGame.x - this.buttons.loadGame.width / 2 &&
-            mouseX < this.buttons.loadGame.x + this.buttons.loadGame.width / 2 &&
-            mouseY > this.buttons.loadGame.y - this.buttons.loadGame.height / 2 &&
-            mouseY < this.buttons.loadGame.y + this.buttons.loadGame.height / 2) {
-            currentScene = new Scene3();
-            if (currentScene.preload) {
-                currentScene.preload();  // Make sure preload is called
+            if (this.scene5Button) {
+                this.scene5Button.remove();
             }
-        }
-
-        // Check if click is within beginJourney button bounds
-        if (mouseX > this.buttons.beginJourney.x - this.buttons.beginJourney.width / 2 &&
-            mouseX < this.buttons.beginJourney.x + this.buttons.beginJourney.width / 2 &&
-            mouseY > this.buttons.beginJourney.y - this.buttons.beginJourney.height / 2 &&
-            mouseY < this.buttons.beginJourney.y + this.buttons.beginJourney.height / 2) {
-            currentScene = new Scene2();
-        }
-
-        // Debug skip button - adjusted hit detection
-        let skipButtonX = width - 100;
-        let skipButtonY = height - 30;
-        let buttonWidth = 150;
-        let buttonHeight = 40;
-
-        if (mouseX > skipButtonX - buttonWidth/2 && 
-            mouseX < skipButtonX + buttonWidth/2 &&
-            mouseY > skipButtonY - buttonHeight/2 && 
-            mouseY < skipButtonY + buttonHeight/2) {
-            console.log("Skipping to Scene 5");
-            if (this.backgroundMusic && this.backgroundMusic.isPlaying()) {
-                this.backgroundMusic.stop();
+            if (this.scene6Button) {
+                this.scene6Button.remove();
             }
-            currentScene = new Scene5();
-            currentScene.preload();
-            return;
+            
+            // Start normal game flow
+            let scene2 = new Scene2();
+            scene2.preload();
+            currentScene = scene2;
         }
-
-        // Add Scene6 button check
-        if (mouseX > this.scene6Button.x && 
-            mouseX < this.scene6Button.x + this.scene6Button.width &&
-            mouseY > this.scene6Button.y && 
-            mouseY < this.scene6Button.y + this.scene6Button.height) {
-            console.log("Switching to Scene6");
-            try {
-                currentScene = new Scene6();
-                if (currentScene.preload) {
-                    currentScene.preload();
-                }
-                console.log("Successfully created Scene6");
-            } catch (error) {
-                console.error("Error creating Scene6:", error);
-            }
-        }
-    }
-
-    drawScene6Button() {
-        push();
-        this.scene6Button.isHovered = mouseX > this.scene6Button.x && 
-                                    mouseX < this.scene6Button.x + this.scene6Button.width &&
-                                    mouseY > this.scene6Button.y && 
-                                    mouseY < this.scene6Button.y + this.scene6Button.height;
-        
-        fill(this.scene6Button.isHovered ? color(100, 100, 255) : color(70, 70, 255));
-        stroke(255);
-        strokeWeight(2);
-        rect(this.scene6Button.x, this.scene6Button.y, 
-             this.scene6Button.width, this.scene6Button.height, 10);
-        
-        fill(255);
-        noStroke();
-        textAlign(CENTER, CENTER);
-        textSize(16);
-        text(this.scene6Button.text, 
-             this.scene6Button.x + this.scene6Button.width/2, 
-             this.scene6Button.y + this.scene6Button.height/2);
-        pop();
     }
 
     cleanup() {
-        this.scene7Button.remove();
+        // Check if buttons exist before removing
+        if (this.videoEndButton) {
+            this.videoEndButton.remove();
+        }
+        if (this.scene5Button) {
+            this.scene5Button.remove();
+        }
         // ... any other cleanup code ...
     }
 }
