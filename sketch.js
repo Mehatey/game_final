@@ -1,16 +1,19 @@
 let currentScene;
+let gameFont;
 
 function preload() {
+    gameFont = loadFont('assets/fonts/ARCADE.TTF');
     currentScene = new Scene1();
     currentScene.preload();
 }
 
 function setup() {
-    createCanvas(windowWidth, windowHeight);
+    createCanvas(800, 600);
+    textFont(gameFont);
 }
 
 function draw() {
-    if (currentScene && currentScene.draw) {
+    if (currentScene) {
         currentScene.draw();
     }
 }
@@ -22,9 +25,14 @@ function mousePressed() {
 }
 
 function keyPressed() {
-    if (currentScene && currentScene.keyPressed) {
+    if (currentScene) {
         currentScene.keyPressed();
     }
+}
+
+function switchScene(newScene) {
+    currentScene = newScene;
+    currentScene.preload();
 }
 
 function windowResized() {
