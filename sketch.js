@@ -3,13 +3,15 @@ let gameFont;
 
 function preload() {
     gameFont = loadFont('assets/fonts/ARCADE.TTF');
-    currentScene = new Scene1();
-    currentScene.preload();
 }
 
 function setup() {
     createCanvas(800, 600);
     textFont(gameFont);
+    currentScene = new Scene1();
+    if (currentScene.preload) {
+        currentScene.preload();
+    }
 }
 
 function draw() {
@@ -32,7 +34,9 @@ function keyPressed() {
 
 function switchScene(newScene) {
     currentScene = newScene;
-    currentScene.preload();
+    if (currentScene.preload) {
+        currentScene.preload();
+    }
 }
 
 function windowResized() {

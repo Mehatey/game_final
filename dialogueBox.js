@@ -46,7 +46,7 @@ class DialogueBox {
         }
 
         if (this.typingSound) {
-            this.typingSound.play();
+            this.typingSound.loop();
         }
     }
 
@@ -66,6 +66,9 @@ class DialogueBox {
                     this.charIndex++;
                 } else {
                     this.isTyping = false;
+                    if (this.typingSound) {
+                        this.typingSound.stop();
+                    }
                 }
             }
         }

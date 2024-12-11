@@ -266,6 +266,25 @@ class Scene3 {
                 text("Retry", width/2, height/2 + 60);
                 pop();
             }
+
+            // Check for game completion (after timer update)
+            if (this.gameTimer <= 0 && !this.showRetryPrompt) {
+                // Player survived! Transition to Scene 4
+                push();
+                fill(0, 0, 0, 200);
+                rect(0, 0, width, height);
+
+                textAlign(CENTER, CENTER);
+                fill(255);
+                textSize(32);
+                text("You survived!", width/2, height/2 - 40);
+                textSize(24);
+                text("Click anywhere to continue...", width/2, height/2 + 40);
+                pop();
+
+                // Add flag to track completion
+                this.gameCompleted = true;
+            }
         }
     }
 
@@ -321,49 +340,63 @@ class Scene3 {
     }
 
     mousePressed() {
-        if (this.dialogueState === 'playing' && this.showRetryPrompt) {
-            // Check if mouse is over retry button (using centered coordinates)
-            let buttonX = width/2;
-            let buttonY = height/2 + 60;
-            let buttonWidth = 120;
-            let buttonHeight = 40;
-            
-            if (mouseX > buttonX - buttonWidth/2 && 
-                mouseX < buttonX + buttonWidth/2 && 
-                mouseY > buttonY - buttonHeight/2 && 
-                mouseY < buttonY + buttonHeight/2) {
+        if (this.dialogueState === 'playing') {
+            if (this.showRetryPrompt) {
+                // Check if mouse is over retry button (using centered coordinates)
+                let buttonX = width/2;
+                let buttonY = height/2 + 60;
+                let buttonWidth = 120;
+                let buttonHeight = 40;
                 
-                // Reset game state
-                this.gameTimer = 15;  // Reset to original 15 seconds
-                this.words = [];      // Clear existing words
-                this.showRetryPrompt = false;  // Hide retry prompt
-                
-                // Spawn initial set of words
-                for (let i = 0; i < 20; i++) {  // Start with 20 words
-                    let word = this.negativeWords[floor(random(this.negativeWords.length))];
-                    let spawnSide = floor(random(4));
-                    let x, y;
+                if (mouseX > buttonX - buttonWidth/2 && 
+                    mouseX < buttonX + buttonWidth/2 && 
+                    mouseY > buttonY - buttonHeight/2 && 
+                    mouseY < buttonY + buttonHeight/2) {
+                    
+                    // Reset game state
+                    this.gameTimer = 15;  // Reset to original 15 seconds
+                    this.words = [];      // Clear existing words
+                    this.showRetryPrompt = false;  // Hide retry prompt
+                    
+                    // Spawn initial set of words
+                    for (let i = 0; i < 20; i++) {  // Start with 20 words
+                        let word = this.negativeWords[floor(random(this.negativeWords.length))];
+                        let spawnSide = floor(random(4));
+                        let x, y;
 
-                    switch (spawnSide) {
-                        case 0: // top
-                            x = random(width);
-                            y = -50;
-                            break;
-                        case 1: // right
-                            x = width + 50;
-                            y = random(height);
-                            break;
-                        case 2: // bottom
-                            x = random(width);
-                            y = height + 50;
-                            break;
-                        case 3: // left
-                            x = -50;
-                            y = random(height);
-                            break;
+                        switch (spawnSide) {
+                            case 0: // top
+                                x = random(width);
+                                y = -50;
+                                break;
+                            case 1: // right
+                                x = width + 50;
+                                y = random(height);
+                                break;
+                            case 2: // bottom
+                                x = random(width);
+                                y = height + 50;
+                                break;
+                            case 3: // left
+                                x = -50;
+                                y = random(height);
+                                break;
+                        }
+
+                        this.words.push(new Word(word, x, y));
                     }
-
-                    this.words.push(new Word(word, x, y));
+                }
+            } else if (this.gameCompleted) {
+                console.log("Attempting to transition to Scene4");
+                this.cleanup();
+                try {
+                    currentScene = new Scene4();
+                    if (currentScene.preload) {
+                        currentScene.preload();
+                    }
+                    console.log("Successfully created Scene4");
+                } catch (error) {
+                    console.error("Error creating Scene4:", error);
                 }
             }
         }
