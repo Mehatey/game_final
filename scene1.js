@@ -128,6 +128,22 @@ class Scene1 {
         textSize(16);
         text("Skip to Scene 4", width - 90, height - 30);
         pop();
+
+        // Debug skip button - adjusted position and size
+        fill(100);
+        noStroke();
+        rectMode(CENTER);
+        let skipButtonX = width - 100;
+        let skipButtonY = height - 30;
+        let buttonWidth = 150;  // Made wider to fit text
+        let buttonHeight = 40;
+        rect(skipButtonX, skipButtonY, buttonWidth, buttonHeight, 8);
+        
+        // Text alignment for skip button
+        fill(255);
+        textAlign(CENTER, CENTER);
+        textSize(14);  // Slightly smaller text
+        text("Skip to Scene 5", skipButtonX, skipButtonY);
     }
 
     drawPixelButton(button) {
@@ -180,6 +196,8 @@ class Scene1 {
                 if (currentScene.preload) {
                     currentScene.preload();
                 }
+                // Skip directly to questions
+                currentScene.currentDialogue = currentScene.dialogues.length;
                 console.log("Successfully created Scene4");
             } catch (error) {
                 console.error("Error creating Scene4:", error);
@@ -218,6 +236,25 @@ class Scene1 {
             mouseY > this.buttons.beginJourney.y - this.buttons.beginJourney.height / 2 &&
             mouseY < this.buttons.beginJourney.y + this.buttons.beginJourney.height / 2) {
             currentScene = new Scene2();
+        }
+
+        // Debug skip button - adjusted hit detection
+        let skipButtonX = width - 100;
+        let skipButtonY = height - 30;
+        let buttonWidth = 150;
+        let buttonHeight = 40;
+
+        if (mouseX > skipButtonX - buttonWidth/2 && 
+            mouseX < skipButtonX + buttonWidth/2 &&
+            mouseY > skipButtonY - buttonHeight/2 && 
+            mouseY < skipButtonY + buttonHeight/2) {
+            console.log("Skipping to Scene 5");
+            if (this.backgroundMusic && this.backgroundMusic.isPlaying()) {
+                this.backgroundMusic.stop();
+            }
+            currentScene = new Scene5();
+            currentScene.preload();
+            return;
         }
     }
 }
