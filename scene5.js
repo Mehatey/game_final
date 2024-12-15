@@ -722,3 +722,10 @@ class Scene5 {
     }
 }
 
+document.querySelectorAll('button').forEach(button => {
+    button.addEventListener('click', () => {
+        const audio = new Audio('sounds/button.mp3');
+        audio.play();
+    });
+});
+
