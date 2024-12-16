@@ -104,29 +104,180 @@ class Scene3 {
         this.hero.initialSize = 30;  // Store initial size
         this.hero.maxSize = 60;      // Maximum size hero can grow to
         this.hero.sizeIncrement = 2; // How much to grow on each hit
+
+        // Initialize sound variable
+        this.scarySound = null;
+
+        // Add hopeEntry sound to constructor
+        this.hopeEntrySound = null;
+
+        // Add wordgame sound
+        this.wordgameSound = null;
+
+        // Call preload immediately
+        this.preload();
+
+        this.doorWidth = 0;
+        this.doorHeight = windowHeight;
+        this.doorStartTime = millis();
+        this.doorDuration = 4000; // 4 seconds
+        this.doorOpening = true;
+        this.doorGlow = 0;
+        this.warpLines = [];
+        for (let i = 0; i < 50; i++) {
+            this.warpLines.push({
+                x: random(width),
+                y: random(height),
+                speed: random(5, 15),
+                length: random(50, 150),
+                alpha: random(100, 255)
+            });
+        }
     }
 
     preload() {
+        console.log("Scene3 preload started");
         this.hero.preload();
         this.hope.preload();
-        this.dialogueBox.typingSound = loadSound('assets/sounds/typing.mp3');
-        this.hurtSound = loadSound('assets/sounds/hurt.mp3');
 
-        soundFormats('mp3');
-        loadSound('assets/sounds/scary.mp3',
-            (sound) => {
-                this.narrationMusic = sound;
-                this.narrationMusic.setVolume(0.5);
-                this.narrationMusic.loop();
+        // Initialize sounds using Howl
+        this.dialogueBox.typingSound = new Howl({
+            src: ['./assets/sounds/typing.mp3'],
+            volume: 0.5,
+            onload: () => console.log("Typing sound loaded"),
+            onloaderror: (id, err) => console.error("Error loading typing sound:", err)
+        });
+
+        this.hopeEntrySound = new Howl({
+            src: ['./assets/sounds/hopeentry.mp3'],
+            volume: 0.5,
+            onload: () => console.log("Hope entry sound loaded"),
+            onloaderror: (id, err) => console.error("Error loading hope entry sound:", err)
+        });
+
+        this.hurtSound = new Howl({
+            src: ['./assets/sounds/hurt.mp3'],
+            volume: 0.5,
+            onload: () => console.log("Hurt sound loaded"),
+            onloaderror: (id, err) => console.error("Error loading hurt sound:", err)
+        });
+
+        this.scarySound = new Howl({
+            src: ['./assets/sounds/scary.mp3'],
+            volume: 0.3,
+            loop: true,
+            onload: () => {
+                console.log("Scary sound loaded");
+                this.scarySound.play();
                 this.assetsLoaded = true;
-            }
-        );
+            },
+            onloaderror: (id, err) => console.error("Error loading scary sound:", err)
+        });
+
+        // Add wordgame sound
+        this.wordgameSound = new Howl({
+            src: ['./assets/sounds/wordgame.mp3'],
+            volume: 0.5,
+            loop: true,
+            onload: () => console.log("Wordgame sound loaded"),
+            onloaderror: (id, err) => console.error("Error loading wordgame sound:", err)
+        });
     }
 
     draw() {
-        background(0);
+        if (this.doorOpening) {
+            let elapsed = millis() - this.doorStartTime;
+            if (elapsed > 0) {
+                // Draw warp speed effect
+                push();
+                strokeWeight(2);
+                for (let warpLine of this.warpLines) {
+                    stroke(255, 255, 255, warpLine.alpha);
+                    warpLine.x += warpLine.speed;
+                    if (warpLine.x > width) warpLine.x = 0;
+                    
+                    let angle = atan2(height/2 - warpLine.y, width/2 - warpLine.x);
+                    let startX = warpLine.x;
+                    let startY = warpLine.y;
+                    let endX = warpLine.x + cos(angle) * warpLine.length;
+                    let endY = warpLine.y + sin(angle) * warpLine.length;
+                    
+                    line(startX, startY, endX, endY);
+                }
+                pop();
 
-        if (!this.assetsLoaded) return;
+                // Calculate portal size
+                this.doorWidth = map(
+                    elapsed,
+                    0,
+                    this.doorDuration,
+                    0,
+                    windowWidth * 0.7
+                );
+
+                push();
+                drawingContext.save();
+                
+                // Create portal shape
+                translate(width/2, height/2);
+                beginShape();
+                for (let a = 0; a < TWO_PI; a += 0.1) {
+                    let xoff = map(cos(a + frameCount * 0.05), -1, 1, 0, 0.2);
+                    let yoff = map(sin(a + frameCount * 0.05), -1, 1, 0, 0.2);
+                    let r = this.doorWidth/2;
+                    let x = r * cos(a) + noise(xoff, yoff, frameCount * 0.02) * 20;
+                    let y = r * sin(a) + noise(xoff, yoff + 5, frameCount * 0.02) * 20;
+                    vertex(x, y);
+                }
+                endShape(CLOSE);
+                
+                // Add glow and portal effects
+                drawingContext.shadowBlur = 30;
+                drawingContext.shadowColor = 'rgba(0, 150, 255, 0.5)';
+                
+                drawingContext.restore();
+                pop();
+
+                // Draw portal edge effects
+                push();
+                translate(width/2, height/2);
+                noFill();
+                for (let i = 0; i < 3; i++) {
+                    stroke(0, 150, 255, 255 - i * 50);
+                    strokeWeight(3 - i);
+                    beginShape();
+                    for (let a = 0; a < TWO_PI; a += 0.1) {
+                        let r = this.doorWidth/2 + i * 5;
+                        let x = r * cos(a);
+                        let y = r * sin(a);
+                        vertex(x, y);
+                    }
+                    endShape(CLOSE);
+                }
+                pop();
+
+                if (elapsed >= this.doorDuration) {
+                    this.doorOpening = false;
+                }
+            }
+        }
+
+        // Create dark gradient background
+        let c1 = color(0, 0, 0);      // Pure black
+        let c2 = color(40, 40, 40);   // Dark gray
+        
+        // Draw gradient
+        for(let y = 0; y < height; y++) {
+            let inter = map(y, 0, height, 0, 1);
+            let c = lerpColor(c1, c2, inter);
+            stroke(c);
+            line(0, y, width, y);
+        }
+
+        if (!this.assetsLoaded) {
+            console.log("Waiting for assets to load...");
+            return;
+        }
 
         // Add custom cursor
         CustomCursor.draw();
@@ -137,44 +288,52 @@ class Scene3 {
             this.hero.update();
             this.hero.draw();
 
-            let currentDialogue = this.heroDialogues[this.currentDialogue];
+            // Only proceed if we have valid dialogue
+            if (this.currentDialogue < this.heroDialogues.length) {
+                let currentDialogue = this.heroDialogues[this.currentDialogue];
 
-            // Draw Hope if entered
-            if (this.hopeEntered) {
-                this.hope.update();
-                let time = millis() * 0.001;
-                this.hope.x = width / 2 + sin(time) * 100;
-                this.hope.y = height / 2 + cos(time) * 50;
-                this.hope.draw();
-            }
-
-            // Only start new dialogue if previous is complete
-            if (!this.dialogueBox.isTyping && this.dialogueBox.isComplete()) {
-                // First show current dialogue
-                this.dialogueBox.startDialogue(
-                    currentDialogue.text,
-                    currentDialogue.speaker === 'hero' ? this.playerName : 'Hope'
-                );
-
-                // Check Hope's entry before incrementing
-                if (currentDialogue.startHopeEntry && !this.hopeEntered) {
-                    this.hope.startEntry();
-                    this.hopeEntered = true;
+                // Draw Hope if entered
+                if (this.hopeEntered) {
+                    this.hope.update();
+                    let time = millis() * 0.001;
+                    this.hope.x = width / 2 + sin(time) * 100;
+                    this.hope.y = height / 2 + cos(time) * 50;
+                    this.hope.draw();
                 }
 
-                // Then prepare for next dialogue
-                this.currentDialogue++;
-                if (this.currentDialogue < this.heroDialogues.length) {
-                    currentDialogue = this.heroDialogues[this.currentDialogue];
-                } else {
-                    this.dialogueState = 'playing';
-                    this.hope.startFadeOut();
-                }
-            }
+                // Only start new dialogue if previous is complete
+                if (!this.dialogueBox.isTyping && this.dialogueBox.isComplete()) {
+                    // Check Hope's entry before starting new dialogue
+                    if (currentDialogue.startHopeEntry && !this.hopeEntered) {
+                        this.hope.startEntry();
+                        this.hopeEntered = true;
+                        if (this.hopeEntrySound) {
+                            this.hopeEntrySound.play();
+                        }
+                    }
 
-            this.dialogueBox.update();
-            this.dialogueBox.draw();
+                    // Start new dialogue
+                    this.dialogueBox.startDialogue(
+                        currentDialogue.text,
+                        currentDialogue.speaker === 'hero' ? this.playerName : 'Hope'
+                    );
+                    this.currentDialogue++;
+                }
+
+                this.dialogueBox.update();
+                this.dialogueBox.draw();
+            } else {
+                // Move to playing state when dialogues are done
+                this.dialogueState = 'playing';
+                this.hope.startFadeOut();
+            }
         } else if (this.dialogueState === 'playing') {
+            // Start wordgame sound when entering playing state
+            if (!this.gameStarted) {
+                this.wordgameSound.play();
+                this.gameStarted = true;
+            }
+            
             this.hero.update();
             this.hero.draw();
 
@@ -231,7 +390,7 @@ class Scene3 {
             textAlign(CENTER, CENTER);
             textSize(32);
             fill(255);
-            text(ceil(this.gameTimer), width/2, 50);
+            text(ceil(this.gameTimer), width / 2, 50);
             pop();
 
             // Update timer
@@ -248,25 +407,25 @@ class Scene3 {
 
                 // Center all text
                 textAlign(CENTER, CENTER);
-                
+
                 // Draw retry prompt
                 fill(255);
                 textSize(32);
-                text("Try Again?", width/2, height/2 - 80);
-                
+                text("Try Again?", width / 2, height / 2 - 80);
+
                 // Draw hope quote with proper wrapping
                 textSize(24);
                 textWrap(WORD);
                 textLeading(30);
-                text(this.currentHopeQuote, width/2 - 200, height/2 - 20, 400);
+                text(this.currentHopeQuote, width / 2 - 200, height / 2 - 20, 400);
 
                 // Center retry button and text
                 fill(0, 100, 255);
                 rectMode(CENTER);
-                rect(width/2, height/2 + 60, 120, 40, 10);
+                rect(width / 2, height / 2 + 60, 120, 40, 10);
                 fill(255);
                 textSize(20);
-                text("Retry", width/2, height/2 + 60);
+                text("Retry", width / 2, height / 2 + 60);
                 pop();
             }
 
@@ -280,9 +439,9 @@ class Scene3 {
                 textAlign(CENTER, CENTER);
                 fill(255);
                 textSize(32);
-                text("You survived!", width/2, height/2 - 40);
+                text("You survived!", width / 2, height / 2 - 40);
                 textSize(24);
-                text("Click anywhere to continue...", width/2, height/2 + 40);
+                text("Click anywhere to continue...", width / 2, height / 2 + 40);
                 pop();
 
                 // Add flag to track completion
@@ -346,21 +505,21 @@ class Scene3 {
         if (this.dialogueState === 'playing') {
             if (this.showRetryPrompt) {
                 // Check if mouse is over retry button (using centered coordinates)
-                let buttonX = width/2;
-                let buttonY = height/2 + 60;
+                let buttonX = width / 2;
+                let buttonY = height / 2 + 60;
                 let buttonWidth = 120;
                 let buttonHeight = 40;
-                
-                if (mouseX > buttonX - buttonWidth/2 && 
-                    mouseX < buttonX + buttonWidth/2 && 
-                    mouseY > buttonY - buttonHeight/2 && 
-                    mouseY < buttonY + buttonHeight/2) {
-                    
+
+                if (mouseX > buttonX - buttonWidth / 2 &&
+                    mouseX < buttonX + buttonWidth / 2 &&
+                    mouseY > buttonY - buttonHeight / 2 &&
+                    mouseY < buttonY + buttonHeight / 2) {
+
                     // Reset game state
                     this.gameTimer = 15;  // Reset to original 15 seconds
                     this.words = [];      // Clear existing words
                     this.showRetryPrompt = false;  // Hide retry prompt
-                    
+
                     // Spawn initial set of words
                     for (let i = 0; i < 20; i++) {  // Start with 20 words
                         let word = this.negativeWords[floor(random(this.negativeWords.length))];
@@ -421,8 +580,34 @@ class Scene3 {
 
     // Add cleanup method to stop music when leaving scene
     cleanup() {
-        if (this.narrationMusic && this.narrationMusic.isPlaying()) {
-            this.narrationMusic.stop();
+        // Stop all Howl instances
+        if (this.dialogueBox && this.dialogueBox.typingSound) {
+            this.dialogueBox.typingSound.stop();
+        }
+        
+        if (this.hurtSound) {
+            this.hurtSound.stop();
+        }
+        
+        if (this.scarySound) {
+            this.scarySound.stop();
+        }
+
+        // Unload sounds to free memory
+        if (this.dialogueBox && this.dialogueBox.typingSound) {
+            this.dialogueBox.typingSound.unload();
+        }
+        if (this.hurtSound) {
+            this.hurtSound.unload();
+        }
+        if (this.scarySound) {
+            this.scarySound.unload();
+        }
+
+        // Add wordgame sound cleanup
+        if (this.wordgameSound) {
+            this.wordgameSound.stop();
+            this.wordgameSound.unload();
         }
     }
 }

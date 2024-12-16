@@ -40,6 +40,15 @@ class DialogueBox {
         this.minWidth = 400;
         this.maxWidth = width - 10;
         this.namePadding = 25;
+
+        // Initialize typing sound
+        this.typingSound = new Howl({
+            src: ['./assets/sounds/typing.mp3'],
+            volume: 0.3,
+            loop: true,
+            onload: () => console.log("DialogueBox typing sound loaded"),
+            onloaderror: (id, err) => console.error("Error loading typing sound:", err)
+        });
     }
 
     startDialogue(text, name) {
@@ -80,8 +89,9 @@ class DialogueBox {
             this.strokeColor = this.defaultStrokeColor;
         }
 
+        // Start typing sound
         if (this.typingSound) {
-            this.typingSound.loop();
+            this.typingSound.play();
         }
     }
 
@@ -106,6 +116,14 @@ class DialogueBox {
                     }
                 }
             }
+
+            // Stop typing sound when done
+            if (this.charIndex >= this.targetText.length) {
+                this.isTyping = false;
+                if (this.typingSound) {
+                    this.typingSound.stop();
+                }
+            }
         }
     }
 
@@ -119,45 +137,45 @@ class DialogueBox {
 
     draw() {
         if (!this.currentText) return;
-        
+
         push();
-        
+
         // Calculate text width and box size
         textSize(this.textSize);
         let textW = textWidth(this.currentText);
         let requiredWidth = textW + (this.boxPadding * 3);
         this.boxWidth = Math.min(width - 60, Math.max(this.minWidth, requiredWidth));
-        
+
         let boxX = (width - this.boxWidth) / 2;
         let boxY = height - this.boxHeight - 30;
-    
+
         // Draw box
         fill(this.boxColor);
         stroke(this.strokeColor);
         strokeWeight(this.strokeWidth);
         rectMode(CORNER);
         rect(boxX, boxY, this.boxWidth, this.boxHeight, this.cornerRadius);
-    
+
         // Draw name if present
         if (this.speakerName) {
             textSize(this.nameSize);
             fill(255);
             noStroke();
             textAlign(LEFT, TOP);
-            text(this.speakerName, 
-                 boxX + this.boxPadding, 
-                 boxY + this.namePadding);
+            text(this.speakerName,
+                boxX + this.boxPadding,
+                boxY + this.namePadding);
         }
-    
+
         // Draw dialogue text
         fill(255);
         noStroke();
         textAlign(LEFT, CENTER);
         textSize(this.textSize);
-        text(this.currentText, 
-             boxX + this.boxPadding,
-             boxY + (this.boxHeight/2) + 10,
-             this.boxWidth - (this.boxPadding * 2));
+        text(this.currentText,
+            boxX + this.boxPadding,
+            boxY + (this.boxHeight / 2) + 10,
+            this.boxWidth - (this.boxPadding * 2));
         pop();
     }
-    }
+}

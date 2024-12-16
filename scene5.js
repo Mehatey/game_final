@@ -165,6 +165,23 @@ class Scene5 {
         this.isCircling = false;
         this.ambientSound = null;
         this.scarySound = null;
+
+        this.doorWidth = 0;
+        this.doorHeight = windowHeight;
+        this.doorStartTime = millis();
+        this.doorDuration = 4000; // 4 seconds
+        this.doorOpening = true;
+        this.doorGlow = 0;
+        this.warpLines = [];
+        for (let i = 0; i < 50; i++) {
+            this.warpLines.push({
+                x: random(width),
+                y: random(height),
+                speed: random(5, 15),
+                length: random(50, 150),
+                alpha: random(100, 255)
+            });
+        }
     }
 
     async preload() {
@@ -609,6 +626,83 @@ class Scene5 {
         // Update and draw dialogue box
         this.dialogueBox.update();
         this.dialogueBox.draw();
+
+        if (this.doorOpening) {
+            let elapsed = millis() - this.doorStartTime;
+            if (elapsed > 0) {
+                // Draw warp speed effect
+                push();
+                strokeWeight(2);
+                for (let warpLine of this.warpLines) {
+                    stroke(255, 255, 255, warpLine.alpha);
+                    warpLine.x += warpLine.speed;
+                    if (warpLine.x > width) warpLine.x = 0;
+                    
+                    let angle = atan2(height/2 - warpLine.y, width/2 - warpLine.x);
+                    let startX = warpLine.x;
+                    let startY = warpLine.y;
+                    let endX = warpLine.x + cos(angle) * warpLine.length;
+                    let endY = warpLine.y + sin(angle) * warpLine.length;
+                    
+                    line(startX, startY, endX, endY);
+                }
+                pop();
+
+                // Calculate portal size
+                this.doorWidth = map(
+                    elapsed,
+                    0,
+                    this.doorDuration,
+                    0,
+                    windowWidth * 0.7
+                );
+
+                push();
+                drawingContext.save();
+                
+                // Create portal shape
+                translate(width/2, height/2);
+                beginShape();
+                for (let a = 0; a < TWO_PI; a += 0.1) {
+                    let xoff = map(cos(a + frameCount * 0.05), -1, 1, 0, 0.2);
+                    let yoff = map(sin(a + frameCount * 0.05), -1, 1, 0, 0.2);
+                    let r = this.doorWidth/2;
+                    let x = r * cos(a) + noise(xoff, yoff, frameCount * 0.02) * 20;
+                    let y = r * sin(a) + noise(xoff, yoff + 5, frameCount * 0.02) * 20;
+                    vertex(x, y);
+                }
+                endShape(CLOSE);
+                
+                // Add glow and portal effects
+                drawingContext.shadowBlur = 30;
+                drawingContext.shadowColor = 'rgba(0, 150, 255, 0.5)';
+                
+                drawingContext.restore();
+                pop();
+
+                // Draw portal edge effects
+                push();
+                translate(width/2, height/2);
+                noFill();
+                for (let i = 0; i < 3; i++) {
+                    stroke(0, 150, 255, 255 - i * 50);
+                    strokeWeight(3 - i);
+                    beginShape();
+                    for (let a = 0; a < TWO_PI; a += 0.1) {
+                        let r = this.doorWidth/2 + i * 5;
+                        let x = r * cos(a);
+                        let y = r * sin(a);
+                        vertex(x, y);
+                    }
+                    endShape(CLOSE);
+                }
+                pop();
+
+                if (elapsed >= this.doorDuration) {
+                    this.doorOpening = false;
+                }
+            }
+        }
     }
 
     cleanup() {

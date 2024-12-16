@@ -25,6 +25,28 @@ class Scene2 {
         this.waitingForNext = false;
         this.buttonWidth = 200;
         this.buttonHeight = 60;
+        this.doorWidth = 0;
+        this.doorHeight = windowHeight;
+        this.doorStartTime = millis();
+        this.doorDuration = 4000; // 4 seconds
+        this.doorOpening = true;
+        this.doorGlow = 0;
+        this.warpLines = [];
+        for (let i = 0; i < 50; i++) {
+            this.warpLines.push({
+                x: random(width),
+                y: random(height),
+                speed: random(5, 15),
+                length: random(50, 150),
+                alpha: random(100, 255)
+            });
+        }
+
+        // Add sounds
+        this.typingSound = loadSound('./assets/sounds/typing.mp3');
+        this.entrySound = loadSound('./assets/sounds/entry.mp3', () => {
+            this.entrySound.play(); // Play entry sound as soon as it's loaded
+        });
 
         // Move video loading here
         const videoFiles = [
@@ -53,6 +75,83 @@ class Scene2 {
             return;
         }
 
+        if (this.doorOpening) {
+            let elapsed = millis() - this.doorStartTime;
+            if (elapsed > 0) {
+                // Draw warp speed effect
+                push();
+                strokeWeight(2);
+                for (let warpLine of this.warpLines) {
+                    stroke(255, 255, 255, warpLine.alpha);
+                    warpLine.x += warpLine.speed;
+                    if (warpLine.x > width) warpLine.x = 0;
+                    
+                    let angle = atan2(height/2 - warpLine.y, width/2 - warpLine.x);
+                    let startX = warpLine.x;
+                    let startY = warpLine.y;
+                    let endX = warpLine.x + cos(angle) * warpLine.length;
+                    let endY = warpLine.y + sin(angle) * warpLine.length;
+                    
+                    line(startX, startY, endX, endY);
+                }
+                pop();
+
+                // Calculate portal size
+                this.doorWidth = map(
+                    elapsed,
+                    0,
+                    this.doorDuration,
+                    0,
+                    windowWidth * 0.7
+                );
+
+                push();
+                drawingContext.save();
+                
+                // Create portal shape
+                translate(width/2, height/2);
+                beginShape();
+                for (let a = 0; a < TWO_PI; a += 0.1) {
+                    let xoff = map(cos(a + frameCount * 0.05), -1, 1, 0, 0.2);
+                    let yoff = map(sin(a + frameCount * 0.05), -1, 1, 0, 0.2);
+                    let r = this.doorWidth/2;
+                    let x = r * cos(a) + noise(xoff, yoff, frameCount * 0.02) * 20;
+                    let y = r * sin(a) + noise(xoff, yoff + 5, frameCount * 0.02) * 20;
+                    vertex(x, y);
+                }
+                endShape(CLOSE);
+                
+                // Add glow and portal effects
+                drawingContext.shadowBlur = 30;
+                drawingContext.shadowColor = 'rgba(0, 150, 255, 0.5)';
+                
+                drawingContext.restore();
+                pop();
+
+                // Draw portal edge effects
+                push();
+                translate(width/2, height/2);
+                noFill();
+                for (let i = 0; i < 3; i++) {
+                    stroke(0, 150, 255, 255 - i * 50);
+                    strokeWeight(3 - i);
+                    beginShape();
+                    for (let a = 0; a < TWO_PI; a += 0.1) {
+                        let r = this.doorWidth/2 + i * 5;
+                        let x = r * cos(a);
+                        let y = r * sin(a);
+                        vertex(x, y);
+                    }
+                    endShape(CLOSE);
+                }
+                pop();
+
+                if (elapsed >= this.doorDuration) {
+                    this.doorOpening = false;
+                }
+            }
+        }
+
         // Draw squares
         for (let square of this.squares) {
             push();
@@ -69,26 +168,34 @@ class Scene2 {
             push();
             rectMode(CENTER);
 
-            // Check if mouse is over button
-            let isHovered = this.isMouseOverButton(width / 2, height / 2, this.buttonWidth, this.buttonHeight);
-
-            // Button glow effect when hovered
+            // Main button
+            let isHovered = this.isMouseOverButton(width/2, height/2, this.buttonWidth, this.buttonHeight);
             if (isHovered) {
                 drawingContext.shadowBlur = 20;
                 drawingContext.shadowColor = 'rgba(255, 255, 0, 0.5)';
-                fill(255, 255, 0); // Yellow fill when hovered
+                fill(255, 255, 0);
             } else {
                 fill(255);
             }
-
-            // Draw button
-            rect(width / 2, height / 2, this.buttonWidth, this.buttonHeight, 10);
-
-            // Button text
+            rect(width/2, height/2, this.buttonWidth, this.buttonHeight, 10);
+            fill(0);
             textAlign(CENTER, CENTER);
             textSize(20);
+            text("Enter Meh's World", width/2, height/2);
+
+            // Skip Cinematic button
+            let isSkipHovered = this.isMouseOverButton(width/2, height/2 + 80, this.buttonWidth, this.buttonHeight);
+            if (isSkipHovered) {
+                drawingContext.shadowBlur = 20;
+                drawingContext.shadowColor = 'rgba(255, 255, 0, 0.5)';
+                fill(255, 255, 0);
+            } else {
+                fill(255);
+            }
+            rect(width/2, height/2 + 80, this.buttonWidth, this.buttonHeight, 10);
             fill(0);
-            text("Enter Meh's World", width / 2, height / 2);
+            text("Skip Cinematic", width/2, height/2 + 80);
+
             pop();
         }
 
@@ -124,9 +231,14 @@ class Scene2 {
         if (frameCount % 6 === 0 && this.currentSentence < this.sentences.length) {
             const currentSentenceText = this.sentences[this.currentSentence];
             if (this.charIndex < currentSentenceText.length) {
+                // Make sure typing sound plays for each character
+                if (!this.typingSound.isPlaying()) {
+                    this.typingSound.play();
+                }
                 this.currentText += currentSentenceText.charAt(this.charIndex);
                 this.charIndex++;
             } else {
+                this.typingSound.stop();
                 if (!this.waitingForNext) {
                     this.waitingForNext = true;
                     setTimeout(() => {
@@ -164,26 +276,34 @@ class Scene2 {
     }
 
     mousePressed() {
-        console.log("Mouse pressed in Scene2");
         if (this.textComplete && this.squares.length === 0) {
-            if (this.isMouseOverButton(width / 2, height / 2, this.buttonWidth, this.buttonHeight)) {
-                console.log("Starting video sequence");
+            // Original button for entering Meh's world
+            if (this.isMouseOverButton(width/2, height/2, this.buttonWidth, this.buttonHeight)) {
                 this.startVideoSequence();
+            }
+            // New skip cinematic button
+            if (this.isMouseOverButton(width/2, height/2 + 80, this.buttonWidth, this.buttonHeight)) {
+                this.cleanup();
+                currentScene = new Scene3();
             }
         }
     }
 
     startVideoSequence() {
+        // Clean up all sounds before starting videos
+        if (this.typingSound && this.typingSound.isPlaying()) {
+            this.typingSound.stop();
+        }
+        
         this.videoPlaying = true;
         if (this.videos.length > 0) {
-            console.log("Playing first video");
             this.currentVideo = this.videos[0];
             this.currentVideo.size(windowWidth, windowHeight);
             this.currentVideo.position(0, 0);
             this.currentVideo.style('object-fit', 'cover');
             this.currentVideo.style('z-index', '999');
             this.currentVideo.show();
-            this.currentVideo.play().catch(err => console.error("Video play error:", err));
+            this.currentVideo.play();
         }
     }
 
@@ -202,9 +322,28 @@ class Scene2 {
             this.currentVideo.show();
             this.currentVideo.play();
         } else {
-            this.videoPlaying = false;
-            this.currentVideo = null;
+            // Last video finished, clean up and switch to Scene3
+            this.cleanup();
+            currentScene = new Scene3();
         }
+    }
+
+    cleanup() {
+        // Stop all sounds
+        if (this.typingSound && this.typingSound.isPlaying()) {
+            this.typingSound.stop();
+        }
+        if (this.entrySound && this.entrySound.isPlaying()) {
+            this.entrySound.stop();
+        }
+        
+        // Clean up videos
+        this.videos.forEach(video => {
+            if (video) {
+                video.stop();
+                video.remove();
+            }
+        });
     }
 }
 

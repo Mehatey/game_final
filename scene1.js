@@ -111,6 +111,25 @@ class Scene1 {
         this.offsetY = 0;
 
         this.gradientOffset = 0; // Initialize gradient offset
+
+        // Add debug button
+        this.debugButton = createButton('Scene4');
+        this.debugButton.position(20, height - 40);  // Position in bottom left
+        this.debugButton.style('background-color', '#FF0000');  // Red color
+        this.debugButton.style('color', 'white');
+        this.debugButton.style('border', 'none');
+        this.debugButton.style('padding', '10px 20px');
+        this.debugButton.style('cursor', 'pointer');
+        this.debugButton.style('font-family', 'ARCADE');
+        
+        // Add click handler
+        this.debugButton.mousePressed(() => {
+            this.cleanup();  // Use the same cleanup method
+            currentScene = new Scene4();
+            if (currentScene.preload) {
+                currentScene.preload();
+            }
+        });
     }
 
     preload() {
@@ -201,6 +220,11 @@ class Scene1 {
             audio.currentTime = 0;
             audio.remove();
         });
+
+        // Remove debug button if it exists
+        if (this.debugButton) {
+            this.debugButton.remove();
+        }
     }
 
     drawTitle() {
@@ -210,10 +234,10 @@ class Scene1 {
 
         // Calculate the current revolution number (integer)
         let revolutionNumber = floor((frameCount * currentSpeed) / TWO_PI);
-        
+
         // Determine color based on even/odd revolution number
         let color = (revolutionNumber % 2 === 0) ? '#FFFFFF' : '#7FDFFF'; // White on even, blue on odd
-        
+
         // Reverse direction based on revolution number
         let direction = (revolutionNumber % 2 === 0) ? 1 : -1;
 
@@ -411,7 +435,7 @@ class Scene1 {
             // Hover state remains exactly the same
             push();
             drawingContext.globalCompositeOperation = 'source-over';
-            
+
             strokeWeight(8);
             let strokeGradient = drawingContext.createLinearGradient(
                 button.x - button.width / 2,
@@ -422,7 +446,7 @@ class Scene1 {
             strokeGradient.addColorStop(0, 'rgb(0, 0, 0)');
             strokeGradient.addColorStop(1, 'rgb(40, 40, 40)');
             drawingContext.strokeStyle = strokeGradient;
-            
+
             let gradient = drawingContext.createLinearGradient(
                 button.x - button.width / 2,
                 button.y,
@@ -432,7 +456,7 @@ class Scene1 {
             gradient.addColorStop(0, 'rgba(255, 255, 0, 0.8)');
             gradient.addColorStop(1, 'rgba(255, 200, 0, 0.8)');
             drawingContext.fillStyle = gradient;
-            
+
             rect(button.x - button.width / 2,
                 button.y - button.height / 2,
                 button.width,
@@ -464,7 +488,7 @@ class Scene1 {
             strokeGradient.addColorStop(0, 'rgb(0, 100, 150)');
             strokeGradient.addColorStop(1, 'rgb(0, 80, 120)');
             drawingContext.strokeStyle = strokeGradient;
-            
+
             let fillGradient = drawingContext.createLinearGradient(
                 button.x - button.width / 2,
                 button.y,
@@ -474,7 +498,7 @@ class Scene1 {
             fillGradient.addColorStop(0, 'rgba(127, 223, 255, 0.8)');
             fillGradient.addColorStop(1, 'rgba(127, 223, 255, 0.8)');
             drawingContext.fillStyle = fillGradient;
-            
+
             rect(button.x - button.width / 2,
                 button.y - button.height / 2,
                 button.width,
@@ -518,20 +542,20 @@ class Scene1 {
             fill(this.isMouseOver(button) ? 0 : [0, 80, 120]); // Black on hover, dark blue normally
             noStroke();
             let textWidth = this.font.textBounds(button.text, button.x, button.y, 24).w;
-            
+
             // Wider triangle with rounded corners
             beginShape();
-            vertex(button.x + textWidth/2 + 10, button.y - 6);
+            vertex(button.x + textWidth / 2 + 10, button.y - 6);
             bezierVertex(
-                button.x + textWidth/2 + 10, button.y - 6,
-                button.x + textWidth/2 + 10, button.y + 6,
-                button.x + textWidth/2 + 10, button.y + 6
+                button.x + textWidth / 2 + 10, button.y - 6,
+                button.x + textWidth / 2 + 10, button.y + 6,
+                button.x + textWidth / 2 + 10, button.y + 6
             );
-            vertex(button.x + textWidth/2 + 22, button.y);
+            vertex(button.x + textWidth / 2 + 22, button.y);
             bezierVertex(
-                button.x + textWidth/2 + 22, button.y,
-                button.x + textWidth/2 + 10, button.y - 6,
-                button.x + textWidth/2 + 10, button.y - 6
+                button.x + textWidth / 2 + 22, button.y,
+                button.x + textWidth / 2 + 10, button.y - 6,
+                button.x + textWidth / 2 + 10, button.y - 6
             );
             endShape(CLOSE);
             pop();
@@ -607,23 +631,23 @@ class Scene1 {
     drawCustomCursor() {
         noCursor();
         push();
-        
+
         // Largest background circle
         fill(255, 255, 255, 30); // Very translucent white
         noStroke();
         ellipse(mouseX, mouseY, 40, 40); // Increased from 30 to 40
-        
+
         // Middle circle
         fill(255, 255, 255, 60);
         noStroke();
         ellipse(mouseX, mouseY, 25, 25); // Increased from 20 to 25
-        
+
         // Outer circle with reduced stroke
         stroke(255, 255, 255, 255);
         strokeWeight(0.5);
         noFill();
         ellipse(mouseX, mouseY, 20, 20); // Increased from 15 to 20
-        
+
         pop();
     }
 
@@ -648,17 +672,17 @@ class Scene1 {
     mousePressed() {
         // Check which button was clicked
         if (this.buttons.beginJourney && this.isMouseOver(this.buttons.beginJourney)) {
-            this.cleanup();  // Add cleanup here before switching scene
+            this.cleanup();
             currentScene = new Scene2();
         }
-        
+
         if (this.buttons.skipCinematic && this.isMouseOver(this.buttons.skipCinematic)) {
-            this.cleanup();  // Add cleanup here before switching scene
-            currentScene = new Scene3();
+            this.cleanup();
+            currentScene = new Scene3();  // Changed from Scene2 to Scene3
         }
-        
+
         if (this.buttons.straightToMainBattle && this.isMouseOver(this.buttons.straightToMainBattle)) {
-            this.cleanup();  // Add cleanup here before switching scene
+            this.cleanup();
             currentScene = new Scene6();
         }
     }
