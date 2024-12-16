@@ -1,3 +1,10 @@
+window.onerror = function(msg, url, lineNo, columnNo, error) {
+    console.log('Error: ' + msg);
+    console.log('URL: ' + url);
+    console.log('Line: ' + lineNo);
+    return false;
+};
+
 let currentScene;
 let gameFont;
 
@@ -11,6 +18,9 @@ function setup() {
     currentScene = new Scene1();
     if (currentScene.preload) {
         currentScene.preload();
+    }
+    if (currentScene.setup) {
+        currentScene.setup();
     }
 }
 
@@ -33,22 +43,11 @@ function keyPressed() {
 }
 
 function switchScene(newScene) {
-    // Clean up the current scene before switching
-    if (currentScene && currentScene.cleanup) {
-        currentScene.cleanup();
+    if (currentScene) {
+        // Cleanup PIXI if it was used
+        cleanupPixi();
     }
-
-    // Stop all currently playing sounds
-    if (getAudioContext().state === 'running') {
-        getAudioContext().suspend();
-        getAudioContext().resume();
-    }
-
-    // Switch to new scene
     currentScene = newScene;
-    if (currentScene.preload) {
-        currentScene.preload();
-    }
 }
 
 function windowResized() {

@@ -24,8 +24,11 @@
             display: block;
         }
     </style>
+    <script src="https://pixijs.download/release/pixi.min.js"></script>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/addons/p5.sound.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
     <script src="CustomCursor.js"></script>
     <script src="hope.js"></script>
     <script src="dialogueBox.js"></script>
@@ -34,6 +37,7 @@
     <script src="scene4.js"></script>
     <script src="scene1.js"></script>
     <script src="scene2.js"></script>
+    <script src="scene2.5.js"></script>
     <script src="scene3.js"></script>
     <script src="scene5.js"></script>
     <script src="scene6.js"></script>
@@ -43,6 +47,10 @@
 
 <body>
     <main></main>
+    <button id="storyButton"
+        style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; display: none;">
+        Let me tell you my story
+    </button>
     <script>
         document.querySelectorAll('button').forEach(button => {
             button.addEventListener('click', () => {

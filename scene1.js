@@ -569,25 +569,28 @@ class Scene1 {
         drawingContext.save();
         drawingContext.globalCompositeOperation = 'multiply';
 
-        // Create radial gradient
+        // Increased alpha range (0.2-0.8 -> 0.1-0.9) for more dramatic effect
+        let pulseAlpha = map(sin(frameCount * 0.02), -1, 1, 0.1, 0.9);
+
+        // Create radial gradient with pulsing alpha
         let gradient = drawingContext.createRadialGradient(
             windowWidth / 2, windowHeight / 2, 0,
             windowWidth / 2, windowHeight / 2, windowWidth * 0.8
         );
-        gradient.addColorStop(0, 'rgba(0, 0, 0, 0.3)');
+        gradient.addColorStop(0, `rgba(0, 0, 0, ${pulseAlpha})`);
         gradient.addColorStop(1, 'rgba(0, 0, 0, 0.7)');
 
         // Apply gradient
         drawingContext.fillStyle = gradient;
         drawingContext.fillRect(0, 0, windowWidth, windowHeight);
 
-        // Add a subtle vignette effect
+        // Add a subtle vignette effect with pulsing
         let vignetteGradient = drawingContext.createRadialGradient(
             windowWidth / 2, windowHeight / 2, windowHeight * 0.5,
             windowWidth / 2, windowHeight / 2, windowHeight
         );
         vignetteGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        vignetteGradient.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+        vignetteGradient.addColorStop(1, `rgba(0, 0, 0, ${pulseAlpha})`);
 
         drawingContext.fillStyle = vignetteGradient;
         drawingContext.fillRect(0, 0, windowWidth, windowHeight);

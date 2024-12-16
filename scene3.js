@@ -406,8 +406,16 @@ class Scene3 {
     }
 
     keyPressed() {
-        if (this.dialogueState === 'playing') {
-            // Add any playing state key interactions here
+        if (this.namePrompt) {
+            if (keyCode === ENTER && this.playerName.length > 0) {
+                this.namePrompt = false;
+                this.showHero = true;
+                this.showIntroText = true;
+            } else if (keyCode === BACKSPACE) {
+                this.playerName = this.playerName.slice(0, -1);
+            } else if (keyCode !== ENTER && this.playerName.length < 15) {
+                this.playerName += key;
+            }
         }
     }
 
