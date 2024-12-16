@@ -217,6 +217,9 @@ class Scene5 {
             pop();
         }
 
+        // Add custom cursor
+        CustomCursor.draw();
+
         // Pure black to dark purple gradient
         push();
         let gradientAlpha = map(this.fadeAmount, 0, 255, 0, 180);

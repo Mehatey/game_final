@@ -128,6 +128,9 @@ class Scene3 {
 
         if (!this.assetsLoaded) return;
 
+        // Add custom cursor
+        CustomCursor.draw();
+
         if (this.dialogueState === 'intro') {
             this.drawIntroDialogue();
         } else if (this.dialogueState === 'heroDialogue') {

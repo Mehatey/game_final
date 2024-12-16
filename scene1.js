@@ -14,36 +14,40 @@ class Scene1 {
         this.title = "SQUARUBE";
         this.titlePositions = [];
 
-        // Initialize buttons first
+        // Initialize buttons with adjusted spacing and positioning
+        let commonPadding = 20;
+        let commonWidth = (windowWidth - (commonPadding * 2)) * 0.7;
+        let buttonSpacing = 50;
+
         this.buttons = {
+            straightToMainBattle: {
+                x: windowWidth / 2 + (commonWidth / 3) + (buttonSpacing * 1.5),
+                y: windowHeight - 80,
+                width: commonWidth / 3,
+                height: 80,
+                text: "MAIN BATTLE"
+            },
             skipCinematic: {
-                x: windowWidth / 4,
-                y: windowHeight - 60,
-                width: 350,
-                height: 60,
+                x: windowWidth / 2 - (commonWidth / 3) - (buttonSpacing * 1.5),
+                y: windowHeight - 80,
+                width: commonWidth / 3,
+                height: 80,
                 text: "SKIP CINEMATIC"
             },
             beginJourney: {
                 x: windowWidth / 2,
-                y: windowHeight - 60,
-                width: 350,
-                height: 60,
+                y: windowHeight - 80,
+                width: (commonWidth / 3) * 1.2 + 30,
+                height: 80,
                 text: "BEGIN JOURNEY"
-            },
-            straightToMainBattle: {
-                x: (3 * windowWidth) / 4,
-                y: windowHeight - 60,
-                width: 350,
-                height: 60,
-                text: "MAIN BATTLE"
             }
         };
 
-        // Manually set heroPosition to center and adjust
+        // Manually set heroPosition with increased padding
         this.heroPosition = {
             x: windowWidth / 2,
-            y: windowHeight / 2 - 30,
-            scale: 1 / 5,
+            y: windowHeight / 2 - 50,
+            scale: 1 / 4,
             flipped: false
         };
 
@@ -68,17 +72,17 @@ class Scene1 {
 
         this.doorRadius = 0;
         this.doorStartTime = this.fadeStartTime + this.fadeInDuration;
-        this.doorDuration = 5000;
+        this.doorDuration = 8000;
         this.doorOpening = true;
 
         // Start blur after door starts opening
-        this.blurAmount = 500;
+        this.blurAmount = 1000;
         this.blurStartTime = this.doorStartTime;
         this.blurDuration = 5000;
 
         // Button timing
         this.buttonStartTime = millis();
-        this.buttonDelay = 8000; // 8 seconds delay for buttons
+        this.buttonDelay = 15000; // 8 seconds delay for buttons
         this.showButtons = false;
 
         // Auto-play sound
@@ -161,35 +165,78 @@ class Scene1 {
 
     // Clean up sounds when scene changes
     cleanup() {
-        Object.values(this.soundEffects).forEach(sound => {
-            if (sound && sound.isPlaying()) {
-                sound.stop();
-            }
+        // First stop all active sounds
+        if (this.sound && this.sound.isPlaying()) {
+            this.sound.stop();
+            this.sound.disconnect();
+        }
+
+        if (this.soundEffects) {
+            Object.values(this.soundEffects).forEach(sound => {
+                if (sound && sound.isPlaying()) {
+                    sound.stop();
+                    sound.disconnect();
+                }
+            });
+        }
+
+        if (this.sounds && this.sounds.button && this.sounds.button.isPlaying()) {
+            this.sounds.button.stop();
+            this.sounds.button.disconnect();
+        }
+
+        // Suspend and reset audio context
+        getAudioContext().suspend();
+        getAudioContext().close().then(() => {
+            // Reset all sound-related flags
+            this.soundStarted = false;
+            this.buttonHovered = false;
+            this.isCastleMusicPlaying = false;
+        });
+
+        // Remove any lingering audio elements from the DOM
+        const allAudioElements = document.querySelectorAll('audio');
+        allAudioElements.forEach(audio => {
+            audio.pause();
+            audio.currentTime = 0;
+            audio.remove();
         });
     }
 
     drawTitle() {
         textSize(144);
+        let currentSpeed = 0.03;
+        let radius = 200;
 
-        let currentSpeed = 0.02; // Constant speed, no variations
+        // Calculate the current revolution number (integer)
+        let revolutionNumber = floor((frameCount * currentSpeed) / TWO_PI);
+        
+        // Determine color based on even/odd revolution number
+        let color = (revolutionNumber % 2 === 0) ? '#FFFFFF' : '#7FDFFF'; // White on even, blue on odd
+        
+        // Reverse direction based on revolution number
+        let direction = (revolutionNumber % 2 === 0) ? 1 : -1;
 
         // Draw each letter
         for (let i = 0; i < this.title.length; i++) {
             let angle = (TWO_PI / this.title.length) * i;
-            let radius = 250;
             let pos = this.titlePositions[i];
-            
-            // Set position in a circle around the hero (negative for clockwise)
-            pos.x = this.heroPosition.x + cos(angle - frameCount * currentSpeed) * radius;
-            pos.y = this.heroPosition.y + sin(angle - frameCount * currentSpeed) * radius;
+
+            // Set position in a circle around the hero, direction changes with color
+            pos.x = this.heroPosition.x + cos(angle - (frameCount * currentSpeed * direction)) * radius;
+            pos.y = this.heroPosition.y + sin(angle - (frameCount * currentSpeed * direction)) * radius;
 
             push();
-            // Add glow effect to letters
-            drawingContext.shadowBlur = 15;
-            drawingContext.shadowColor = 'rgba(255, 255, 255, 0.5)';
-            fill(255, 255);
+            noStroke();
+
+            // Add glow effect matching the current color
+            drawingContext.shadowBlur = 20;
+            drawingContext.shadowColor = color;
+
+            // Fill with the same color
+            fill(color);
+
             translate(pos.x, pos.y);
-            rotate(-frameCount * currentSpeed); // Negative for clockwise rotation
             textAlign(CENTER, CENTER);
             text(this.title[i], 0, 0);
             pop();
@@ -211,23 +258,25 @@ class Scene1 {
             this.lastHeroChange = millis();
         }
 
-        // Check for hover
-        if (this.isMouseOverHero(hero)) {
-            drawingContext.shadowBlur = 50; // Add glow effect
-            drawingContext.shadowColor = 'rgba(255, 255, 255, 1)'; // Bright white glow
-        } else {
-            drawingContext.shadowBlur = 0;
-        }
+        // Calculate glow intensity using sin wave for smooth pulsing
+        // frameCount/120 gives us a 2-second cycle (assuming 60 FPS)
+        let glowIntensity = map(sin(frameCount / 120), -1, 1, 5, 25);
 
-        // Add background shadow
-        drawingContext.shadowBlur = 20;
-        drawingContext.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        // Add pulsing white glow
+        drawingContext.shadowBlur = glowIntensity;
+        drawingContext.shadowColor = 'rgba(255, 255, 255, 0.5)'; // Semi-transparent white
+
+        // Check for hover (adds extra glow)
+        if (this.isMouseOverHero(hero)) {
+            drawingContext.shadowBlur = 50; // Stronger glow on hover
+            drawingContext.shadowColor = 'rgba(255, 255, 255, 1)'; // Full white glow
+        }
 
         // Use current hero image
         translate(hero.x, hero.y);
         scale(hero.flipped ? -hero.scale : hero.scale, hero.scale);
-        imageMode(CENTER); // Center the image
-        image(this.heroImages[this.currentHeroIndex], 0, 0); // Draw at the center
+        imageMode(CENTER);
+        image(this.heroImages[this.currentHeroIndex], 0, 0);
         pop();
     }
 
@@ -358,110 +407,101 @@ class Scene1 {
 
     drawPixelButton(button) {
         push();
-
         if (this.isMouseOver(button)) {
-            // Black and white glow effect
-            noStroke();
-            // Black glow
-            fill(0, 0, 0, 80);
-            rect(button.x - button.width / 2 - 2,
-                button.y - button.height / 2 - 2,
-                button.width + 4,
-                button.height + 4,
-                5);
-            // White glow
-            fill(255, 255, 255, 40);
-            rect(button.x - button.width / 2 - 1,
-                button.y - button.height / 2 - 1,
-                button.width + 2,
-                button.height + 2,
-                5);
-
-            // Base yellow button with gradient
-            drawingContext.save();
-            let yellowGradient = drawingContext.createLinearGradient(
+            // Hover state remains exactly the same
+            push();
+            drawingContext.globalCompositeOperation = 'source-over';
+            
+            strokeWeight(8);
+            let strokeGradient = drawingContext.createLinearGradient(
                 button.x - button.width / 2,
-                button.y - button.height / 2,
+                button.y,
+                button.x + button.width / 2,
+                button.y
+            );
+            strokeGradient.addColorStop(0, 'rgb(0, 0, 0)');
+            strokeGradient.addColorStop(1, 'rgb(40, 40, 40)');
+            drawingContext.strokeStyle = strokeGradient;
+            
+            let gradient = drawingContext.createLinearGradient(
                 button.x - button.width / 2,
-                button.y + button.height / 2
+                button.y,
+                button.x + button.width / 2,
+                button.y
             );
-            yellowGradient.addColorStop(0, '#ffff00');  // Bright yellow at top
-            yellowGradient.addColorStop(1, '#b3b300');  // Darker yellow at bottom
-            drawingContext.fillStyle = yellowGradient;
-            drawingContext.fillRect(
-                button.x - button.width / 2,
-                button.y - button.height / 2,
-                button.width,
-                button.height
-            );
-
-            // Inner corner shadows
-            drawingContext.globalCompositeOperation = 'multiply';
-
-            // Top-left corner shadow
-            let cornerGradient = drawingContext.createRadialGradient(
-                button.x - button.width / 2, button.y - button.height / 2, 0,
-                button.x - button.width / 2, button.y - button.height / 2, 50
-            );
-            cornerGradient.addColorStop(0, 'rgba(0, 0, 0, 0.5)');  // Increased opacity
-            cornerGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            drawingContext.fillStyle = cornerGradient;
-            drawingContext.fillRect(
-                button.x - button.width / 2,
-                button.y - button.height / 2,
-                60,  // Increased shadow area
-                60
-            );
-
-            // Bottom-right corner shadow
-            cornerGradient = drawingContext.createRadialGradient(
-                button.x + button.width / 2, button.y + button.height / 2, 0,
-                button.x + button.width / 2, button.y + button.height / 2, 50
-            );
-            cornerGradient.addColorStop(0, 'rgba(0, 0, 0, 0.5)');  // Increased opacity
-            cornerGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            drawingContext.fillStyle = cornerGradient;
-            drawingContext.fillRect(
-                button.x + button.width / 2 - 60,  // Increased shadow area
-                button.y + button.height / 2 - 60,
-                60,
-                60
-            );
-
-            // Enhanced noise overlay
-            drawingContext.globalCompositeOperation = 'overlay';
-            let noiseScale = 0.15;  // Increased noise scale
-            loadPixels();
-            for (let x = button.x - button.width / 2; x < button.x + button.width / 2; x += 2) {  // Step by 2 for performance
-                for (let y = button.y - button.height / 2; y < button.y + button.height / 2; y += 2) {
-                    let noiseVal = noise(x * noiseScale, y * noiseScale, frameCount * 0.03);
-                    drawingContext.fillStyle = `rgba(255, 255, 255, ${noiseVal * 0.2})`;  // Increased noise visibility
-                    drawingContext.fillRect(x, y, 2, 2);  // Larger noise pixels
-                }
-            }
-            drawingContext.restore();
-        } else {
-            // Normal state - white button
-            strokeWeight(3);
-            stroke(200);
-            fill(255, 255, 255, 230);
+            gradient.addColorStop(0, 'rgba(255, 255, 0, 0.8)');
+            gradient.addColorStop(1, 'rgba(255, 200, 0, 0.8)');
+            drawingContext.fillStyle = gradient;
+            
             rect(button.x - button.width / 2,
                 button.y - button.height / 2,
                 button.width,
-                button.height);
+                button.height,
+                5);
 
-            // 3D effect lines
-            stroke(200);
-            line(button.x - button.width / 2, button.y - button.height / 2,
-                button.x + button.width / 2, button.y - button.height / 2);
-            line(button.x - button.width / 2, button.y - button.height / 2,
-                button.x - button.width / 2, button.y + button.height / 2);
+            // Black inner shadow on hover
+            drawingContext.shadowInset = true;
+            drawingContext.shadowBlur = 25;
+            drawingContext.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            drawingContext.shadowOffsetX = 0;
+            drawingContext.shadowOffsetY = 0;
+            rect(button.x - button.width / 2,
+                button.y - button.height / 2,
+                button.width,
+                button.height,
+                5);
+            pop();
+        } else {
+            // Normal state with dark blue inner shadow
+            push();
+            strokeWeight(8);
+            let strokeGradient = drawingContext.createLinearGradient(
+                button.x - button.width / 2,
+                button.y,
+                button.x + button.width / 2,
+                button.y
+            );
+            strokeGradient.addColorStop(0, 'rgb(0, 100, 150)');
+            strokeGradient.addColorStop(1, 'rgb(0, 80, 120)');
+            drawingContext.strokeStyle = strokeGradient;
+            
+            let fillGradient = drawingContext.createLinearGradient(
+                button.x - button.width / 2,
+                button.y,
+                button.x + button.width / 2,
+                button.y
+            );
+            fillGradient.addColorStop(0, 'rgba(127, 223, 255, 0.8)');
+            fillGradient.addColorStop(1, 'rgba(127, 223, 255, 0.8)');
+            drawingContext.fillStyle = fillGradient;
+            
+            rect(button.x - button.width / 2,
+                button.y - button.height / 2,
+                button.width,
+                button.height,
+                5);
 
-            stroke(100);
-            line(button.x + button.width / 2, button.y - button.height / 2,
-                button.x + button.width / 2, button.y + button.height / 2);
-            line(button.x - button.width / 2, button.y + button.height / 2,
-                button.x + button.width / 2, button.y + button.height / 2);
+            // Dark blue inner shadow (same technique as hover's black shadow)
+            drawingContext.shadowInset = true;
+            drawingContext.shadowBlur = 25;
+            drawingContext.shadowColor = 'rgba(0, 80, 120, 0.8)';
+            drawingContext.shadowOffsetX = 15; // Add some offset for gradient effect
+            drawingContext.shadowOffsetY = 15;
+            rect(button.x - button.width / 2,
+                button.y - button.height / 2,
+                button.width,
+                button.height,
+                5);
+
+            // Second shadow from opposite direction for complete gradient
+            drawingContext.shadowOffsetX = -15;
+            drawingContext.shadowOffsetY = -15;
+            rect(button.x - button.width / 2,
+                button.y - button.height / 2,
+                button.width,
+                button.height,
+                5);
+            pop();
         }
 
         // Button text
@@ -472,11 +512,30 @@ class Scene1 {
         textAlign(CENTER, CENTER);
         text(button.text, button.x, button.y + 2);
 
-        // Arrow triangle
-        fill(0);
-        triangle(button.x + button.width / 2 - 20, button.y,
-            button.x + button.width / 2 - 30, button.y - 10,
-            button.x + button.width / 2 - 30, button.y + 10);
+        // Add triangle only for BEGIN JOURNEY button
+        if (button.text === "BEGIN JOURNEY") {
+            push();
+            fill(this.isMouseOver(button) ? 0 : [0, 80, 120]); // Black on hover, dark blue normally
+            noStroke();
+            let textWidth = this.font.textBounds(button.text, button.x, button.y, 24).w;
+            
+            // Wider triangle with rounded corners
+            beginShape();
+            vertex(button.x + textWidth/2 + 10, button.y - 6);
+            bezierVertex(
+                button.x + textWidth/2 + 10, button.y - 6,
+                button.x + textWidth/2 + 10, button.y + 6,
+                button.x + textWidth/2 + 10, button.y + 6
+            );
+            vertex(button.x + textWidth/2 + 22, button.y);
+            bezierVertex(
+                button.x + textWidth/2 + 22, button.y,
+                button.x + textWidth/2 + 10, button.y - 6,
+                button.x + textWidth/2 + 10, button.y - 6
+            );
+            endShape(CLOSE);
+            pop();
+        }
 
         pop();
     }
@@ -542,40 +601,26 @@ class Scene1 {
             mouseY > y - h / 2 && mouseY < y + h / 2;
     }
 
-    cleanup() {
-        if (this.sound && this.sound.isPlaying()) {
-            this.sound.stop();
-        }
-    }
-
     drawCustomCursor() {
-        noCursor(); // Hide the default cursor
+        noCursor();
         push();
-        stroke(255, 255, 255, 255); // Full opacity stroke for outer circle
-        strokeWeight(2);
-        fill(this.isMouseOverAnyButton() ? 'yellow' : 'rgba(255, 255, 255, 204)'); // Yellow on hover, white otherwise
-        drawingContext.shadowBlur = 10; // Slight glow
-        drawingContext.shadowColor = 'rgba(255, 255, 255, 0.5)'; // White glow
-        ellipse(mouseX, mouseY, 20, 20); // Outer circle
-
-        // Inner circle with moving yellow and specific blue gradient
-        this.gradientOffset += 0.05; // Increment gradient offset for animation
-        let gradient = drawingContext.createRadialGradient(
-            mouseX + cos(this.gradientOffset) * 5,
-            mouseY + sin(this.gradientOffset) * 5,
-            0,
-            mouseX,
-            mouseY,
-            15
-        );
-        gradient.addColorStop(0, 'yellow');
-        gradient.addColorStop(0.5, 'rgba(0, 128, 255, 0.8)'); // Specific blue color
-        gradient.addColorStop(1, 'yellow');
-        drawingContext.fillStyle = gradient;
-
-        stroke(200); // Much lighter gray stroke
-        strokeWeight(1); // 1 point stroke
-        ellipse(mouseX, mouseY, 15, 15); // Inner circle
+        
+        // Largest background circle
+        fill(255, 255, 255, 30); // Very translucent white
+        noStroke();
+        ellipse(mouseX, mouseY, 40, 40); // Increased from 30 to 40
+        
+        // Middle circle
+        fill(255, 255, 255, 60);
+        noStroke();
+        ellipse(mouseX, mouseY, 25, 25); // Increased from 20 to 25
+        
+        // Outer circle with reduced stroke
+        stroke(255, 255, 255, 255);
+        strokeWeight(0.5);
+        noFill();
+        ellipse(mouseX, mouseY, 20, 20); // Increased from 15 to 20
+        
         pop();
     }
 
@@ -595,6 +640,24 @@ class Scene1 {
             text(button.text, button.x, button.y);
             pop();
         });
+    }
+
+    mousePressed() {
+        // Check which button was clicked
+        if (this.buttons.beginJourney && this.isMouseOver(this.buttons.beginJourney)) {
+            this.cleanup();  // Add cleanup here before switching scene
+            currentScene = new Scene2();
+        }
+        
+        if (this.buttons.skipCinematic && this.isMouseOver(this.buttons.skipCinematic)) {
+            this.cleanup();  // Add cleanup here before switching scene
+            currentScene = new Scene3();
+        }
+        
+        if (this.buttons.straightToMainBattle && this.isMouseOver(this.buttons.straightToMainBattle)) {
+            this.cleanup();  // Add cleanup here before switching scene
+            currentScene = new Scene6();
+        }
     }
 }
 // Easing function for smooth animation

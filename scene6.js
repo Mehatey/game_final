@@ -306,6 +306,9 @@ class Scene6 {
         // Draw background
         background(this.background);
 
+        // Add custom cursor
+        CustomCursor.draw();
+
         // Draw doubt health bar
         this.drawDoubtHealthBar();
 

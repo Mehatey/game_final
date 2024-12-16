@@ -82,6 +82,9 @@ class Scene2 {
         drawingContext.fillStyle = gradient;
         rect(0, 0, width, height);
 
+        // Add custom cursor
+        CustomCursor.draw();
+
         for (let square of this.squares) {
             push();
             noFill();
