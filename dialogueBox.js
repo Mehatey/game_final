@@ -42,7 +42,7 @@ class DialogueBox {
         this.namePadding = 25;
     }
 
-    startDialogue(text, name, style = null) {
+    startDialogue(text, name) {
         this.targetText = text;
         this.currentText = "";
         this.charIndex = 0;

@@ -2,7 +2,9 @@ class Scene1 {
     constructor() {
         this.font = null;
         this.backgroundImage = null;
-        this.heroSprite = null;
+        this.heroImages = [];
+        this.currentHeroIndex = 0;
+        this.lastHeroChange = millis();
         this.sound = null;
         this.playButton = {
             x: windowWidth / 2,
@@ -11,16 +13,38 @@ class Scene1 {
         };
         this.title = "SQUARUBE";
         this.titlePositions = [];
+
+        // Initialize buttons first
+        this.buttons = {
+            skipCinematic: {
+                x: windowWidth / 4,
+                y: windowHeight - 60,
+                width: 350,
+                height: 60,
+                text: "SKIP CINEMATIC"
+            },
+            beginJourney: {
+                x: windowWidth / 2,
+                y: windowHeight - 60,
+                width: 350,
+                height: 60,
+                text: "BEGIN JOURNEY"
+            },
+            straightToMainBattle: {
+                x: (3 * windowWidth) / 4,
+                y: windowHeight - 60,
+                width: 350,
+                height: 60,
+                text: "MAIN BATTLE"
+            }
+        };
+
+        // Manually set heroPosition to center and adjust
         this.heroPosition = {
-            x: random(windowWidth),
-            y: random(windowHeight),
-            speedX: random([-3, 3]),
-            speedY: random([-3, 3]),
-            angle: random(TWO_PI),
-            scale: 1,
-            flipped: false,
-            mass: 1.5,
-            force: { x: 0, y: 0 }
+            x: windowWidth / 2,
+            y: windowHeight / 2 - 30,
+            scale: 1 / 5,
+            flipped: false
         };
 
         // Initialize letters with slower speeds
@@ -37,33 +61,6 @@ class Scene1 {
                 force: { x: 0, y: 0 }
             });
         }
-
-        this.buttons = {
-            skipCinematic: {
-                x: windowWidth / 2,
-                y: windowHeight / 2 - 50,
-                width: 350,
-                height: 60,
-                text: "SKIP CINEMATIC",
-                direction: 1
-            },
-            beginJourney: {
-                x: windowWidth / 2,
-                y: windowHeight / 2 + 30,
-                width: 350,
-                height: 60,
-                text: "BEGIN JOURNEY",
-                direction: 1
-            },
-            straightToMainBattle: {
-                x: windowWidth / 2,
-                y: windowHeight / 2 + 110,
-                width: 350,
-                height: 60,
-                text: "MAIN BATTLE",
-                direction: 1
-            }
-        };
 
         this.fadeAlpha = 255;
         this.fadeStartTime = millis();
@@ -104,13 +101,26 @@ class Scene1 {
             button: null
         };
         this.buttonHovered = false;
+
+        this.draggingLetter = null;
+        this.offsetX = 0;
+        this.offsetY = 0;
+
+        this.gradientOffset = 0; // Initialize gradient offset
     }
 
     preload() {
         this.font = loadFont('./assets/fonts/ARCADE.TTF');
         this.backgroundImage = loadImage('./assets/fantasy.gif');
-        this.heroSprite = loadImage('./assets/characters/meh0/hero1still.png');
-        
+        this.heroImages = [
+            loadImage('./assets/characters/meh0/hero1still.png'),
+            loadImage('./assets/characters/meh0/hero1right.png'),
+            loadImage('./assets/characters/meh0/hero1up.png'),
+            loadImage('./assets/characters/meh0/hero1left.png')
+        ];
+        this.currentHeroIndex = 0;
+        this.lastHeroChange = millis();
+
         // Fix sound path
         soundFormats('mp3');
         this.sound = loadSound('./assets/sounds/fantasy.mp3', () => {
@@ -161,62 +171,73 @@ class Scene1 {
     drawTitle() {
         textSize(144);
 
-        // Animate each letter continuously
+        let currentSpeed = 0.02; // Constant speed, no variations
+
+        // Draw each letter
         for (let i = 0; i < this.title.length; i++) {
+            let angle = (TWO_PI / this.title.length) * i;
+            let radius = 250;
             let pos = this.titlePositions[i];
+            
+            // Set position in a circle around the hero (negative for clockwise)
+            pos.x = this.heroPosition.x + cos(angle - frameCount * currentSpeed) * radius;
+            pos.y = this.heroPosition.y + sin(angle - frameCount * currentSpeed) * radius;
 
             push();
-            // Oscillating opacity
-            pos.opacity = map(sin(frameCount * 0.05 + i), -1, 1, 150, 255);
-            fill(255, pos.opacity);
-
-            // Smooth movement with momentum
-            pos.x += pos.speedX;
-            pos.y += pos.speedY;
-
-            // Bounce off edges with slight randomization
-            if (pos.x < 0 || pos.x > windowWidth) {
-                pos.speedX *= -1;
-                pos.speedX += random(-0.9, 0.9);
-                pos.x = constrain(pos.x, 0, windowWidth);
-            }
-            if (pos.y < 0 || pos.y > windowHeight) {
-                pos.speedY *= -1;
-                pos.speedY += random(-0.9, 0.9);
-                pos.y = constrain(pos.y, 0, windowHeight);
-            }
-
-            // Keep speeds within bounds
-            pos.speedX = constrain(pos.speedX, -3, 5);
-            pos.speedY = constrain(pos.speedY, -3, 5);
-
-            // Warping effects
-            translate(pos.x, pos.y);
-            rotate(pos.angle);
-            scale(pos.scale);
-            pos.angle += pos.rotationSpeed;
-
-            // Oscillating scale
-            pos.scale = map(sin(frameCount * 0.02), -1, 1, 0.8, 1.2);
-
-            // Draw the letter with glow effect
+            // Add glow effect to letters
             drawingContext.shadowBlur = 15;
             drawingContext.shadowColor = 'rgba(255, 255, 255, 0.5)';
+            fill(255, 255);
+            translate(pos.x, pos.y);
+            rotate(-frameCount * currentSpeed); // Negative for clockwise rotation
+            textAlign(CENTER, CENTER);
             text(this.title[i], 0, 0);
             pop();
         }
     }
 
+    isMouseOverLetter(pos) {
+        let d = dist(mouseX, mouseY, pos.x, pos.y);
+        return d < 50; // Adjust radius as needed
+    }
+
     drawHeroSprite() {
         push();
         let hero = this.heroPosition;
+
+        // Change hero image every 5 seconds
+        if (millis() - this.lastHeroChange > 5000) {
+            this.currentHeroIndex = (this.currentHeroIndex + 1) % this.heroImages.length;
+            this.lastHeroChange = millis();
+        }
+
+        // Check for hover
+        if (this.isMouseOverHero(hero)) {
+            drawingContext.shadowBlur = 50; // Add glow effect
+            drawingContext.shadowColor = 'rgba(255, 255, 255, 1)'; // Bright white glow
+        } else {
+            drawingContext.shadowBlur = 0;
+        }
+
+        // Add background shadow
+        drawingContext.shadowBlur = 20;
+        drawingContext.shadowColor = 'rgba(0, 0, 0, 0.5)';
+
+        // Use current hero image
         translate(hero.x, hero.y);
-        scale(hero.flipped ? -1 : 1, 1);
-        image(this.heroSprite, -60, -60, 120, 120); // Increased size
+        scale(hero.flipped ? -hero.scale : hero.scale, hero.scale);
+        imageMode(CENTER); // Center the image
+        image(this.heroImages[this.currentHeroIndex], 0, 0); // Draw at the center
         pop();
     }
 
+    isMouseOverHero(hero) {
+        let d = dist(mouseX, mouseY, hero.x, hero.y);
+        return d < 60 * hero.scale; // Adjust for increased size
+    }
+
     draw() {
+        console.log('Drawing scene');
         if (!this.soundStarted && this.soundLoaded && this.sound && !this.sound.isPlaying()) {
             this.sound.play();
             this.soundStarted = true;
@@ -295,9 +316,6 @@ class Scene1 {
         }
 
         // Update movements and collisions
-        this.titlePositions.forEach(letter => this.updateLetterMovement(letter));
-        this.updateCharacterMovement(this.heroPosition);
-        this.checkCollisions();
         this.checkHoverEffects();
 
         // Initial fade from black
@@ -317,27 +335,12 @@ class Scene1 {
             this.drawPixelButton(this.buttons.beginJourney);
             this.drawPixelButton(this.buttons.straightToMainBattle);
         }
+
+        this.drawCustomCursor(); // Draw the custom cursor
     }
 
     drawPlayButton() {
-        push();
-        if (this.isMouseOverCircle(this.playButton)) {
-            drawingContext.shadowBlur = 20;
-            drawingContext.shadowColor = 'rgba(255, 255, 255, 0.8)';
-        }
-        noFill();
-        stroke(255);
-        strokeWeight(3);
-        ellipse(this.playButton.x, this.playButton.y, this.playButton.radius * 2);
-
-        // Draw play icon
-        fill(255);
-        noStroke();
-        let size = this.playButton.radius / 1.5;
-        triangle(this.playButton.x - size / 2, this.playButton.y - size,
-            this.playButton.x - size / 2, this.playButton.y + size,
-            this.playButton.x + size, this.playButton.y);
-        pop();
+        // No play icon
     }
 
     isMouseOverCircle(button) {
@@ -485,66 +488,7 @@ class Scene1 {
             mouseY < button.y + button.height / 2;
     }
 
-    mousePressed() {
-        if (this.isMouseOver(this.buttons.skipCinematic)) {
-            this.cleanup();
-            switchScene(new Scene3());
-        } else if (this.isMouseOver(this.buttons.beginJourney)) {
-            this.cleanup();
-            switchScene(new Scene2());
-        } else if (this.isMouseOver(this.buttons.straightToMainBattle)) {
-            this.cleanup();
-            switchScene(new Scene6());
-        }
-    }
-
-    checkCollisions() {
-        this.titlePositions.forEach(letter => {
-            let d = dist(letter.x, letter.y, this.heroPosition.x, this.heroPosition.y);
-
-            if (d < 60) {
-                // Strong collision response
-                let angle = atan2(letter.y - this.heroPosition.y, letter.x - this.heroPosition.x);
-                let force = 3; // Constant force for more visible effect
-
-                // Apply force to letter
-                letter.speedX += cos(angle) * force;
-                letter.speedY += sin(angle) * force;
-
-                // Apply opposite force to hero
-                this.heroPosition.speedX -= cos(angle) * force * 0.5;
-                this.heroPosition.speedY -= sin(angle) * force * 0.5;
-
-                // Add some rotation to the letter
-                letter.angle += random(-0.5, 0.5);
-            }
-        });
-    }
-
     checkHoverEffects() {
-        let mouseRadius = 100;
-        let mouseForce = 2;
-
-        // Apply hover effect to hero
-        let dHero = dist(mouseX, mouseY, this.heroPosition.x, this.heroPosition.y);
-        if (dHero < mouseRadius) {
-            let angle = atan2(this.heroPosition.y - mouseY, this.heroPosition.x - mouseX);
-            let force = map(dHero, 0, mouseRadius, mouseForce, 0);
-            this.heroPosition.speedX += cos(angle) * force;
-            this.heroPosition.speedY += sin(angle) * force;
-        }
-
-        // Apply hover effect to letters
-        this.titlePositions.forEach(letter => {
-            let d = dist(mouseX, mouseY, letter.x, letter.y);
-            if (d < mouseRadius) {
-                let angle = atan2(letter.y - mouseY, letter.x - mouseX);
-                let force = map(d, 0, mouseRadius, mouseForce, 0);
-                letter.speedX += cos(angle) * force;
-                letter.speedY += sin(angle) * force;
-            }
-        });
-
         // Check button hover for sound
         Object.values(this.buttons).forEach(button => {
             if (this.isMouseOver(button)) {
@@ -555,84 +499,10 @@ class Scene1 {
                 return;
             }
         });
-        
+
         if (!Object.values(this.buttons).some(button => this.isMouseOver(button))) {
             this.buttonHovered = false;
         }
-    }
-
-    updateCharacterMovement(character) {
-        // Base movement
-        character.x += character.speedX;
-        character.y += character.speedY;
-
-        // Gradual direction changes
-        if (frameCount % 240 === 0) {
-            let targetAngle = random(TWO_PI);
-            let targetSpeed = random(2, 4);
-            character.speedX = lerp(character.speedX, cos(targetAngle) * targetSpeed, 0.05);
-            character.speedY = lerp(character.speedY, sin(targetAngle) * targetSpeed, 0.05);
-        }
-
-        // Bounce off edges
-        if (character.x < 0 || character.x > windowWidth) {
-            character.speedX *= -0.8;
-            character.flipped = !character.flipped;
-            character.x = constrain(character.x, 0, windowWidth);
-        }
-        if (character.y < 0 || character.y > windowHeight) {
-            character.speedY *= -0.8;
-            character.y = constrain(character.y, 0, windowHeight);
-        }
-
-        // Light drag
-        character.speedX *= 0.998;
-        character.speedY *= 0.998;
-    }
-
-    updateLetterMovement(letter) {
-        // Random movement changes
-        if (frameCount % 60 === 0) {
-            letter.speedX += random(-0.1, 0.1);
-            letter.speedY += random(-0.1, 0.1);
-        }
-
-        // Apply forces
-        letter.speedX += letter.force.x;
-        letter.speedY += letter.force.y;
-
-        // Gentle drag
-        letter.speedX *= 0.99;
-        letter.speedY *= 0.99;
-
-        // Ensure minimum speed
-        let speed = sqrt(letter.speedX * letter.speedX + letter.speedY * letter.speedY);
-        if (speed < 0.1) {
-            letter.speedX += random(-0.1, 0.1);
-            letter.speedY += random(-0.1, 0.1);
-        }
-
-        // Update position
-        letter.x += letter.speedX;
-        letter.y += letter.speedY;
-        letter.angle += letter.rotationSpeed;
-
-        // Constrain speeds
-        letter.speedX = constrain(letter.speedX, -1.5, 1.5);
-        letter.speedY = constrain(letter.speedY, -1.5, 1.5);
-
-        // Bounce off edges
-        if (letter.x < 0 || letter.x > windowWidth) {
-            letter.speedX *= -0.8;
-            letter.x = constrain(letter.x, 0, windowWidth);
-        }
-        if (letter.y < 0 || letter.y > windowHeight) {
-            letter.speedY *= -0.8;
-            letter.y = constrain(letter.y, 0, windowHeight);
-        }
-
-        // Reset forces
-        letter.force = { x: 0, y: 0 };
     }
 
     drawGradientOverlay() {
@@ -668,8 +538,8 @@ class Scene1 {
     }
 
     isMouseOverButton(x, y, w, h) {
-        return mouseX > x && mouseX < x + w && 
-               mouseY > y && mouseY < y + h;
+        return mouseX > x - w / 2 && mouseX < x + w / 2 &&
+            mouseY > y - h / 2 && mouseY < y + h / 2;
     }
 
     cleanup() {
@@ -677,8 +547,56 @@ class Scene1 {
             this.sound.stop();
         }
     }
-}
 
+    drawCustomCursor() {
+        noCursor(); // Hide the default cursor
+        push();
+        stroke(255, 255, 255, 255); // Full opacity stroke for outer circle
+        strokeWeight(2);
+        fill(this.isMouseOverAnyButton() ? 'yellow' : 'rgba(255, 255, 255, 204)'); // Yellow on hover, white otherwise
+        drawingContext.shadowBlur = 10; // Slight glow
+        drawingContext.shadowColor = 'rgba(255, 255, 255, 0.5)'; // White glow
+        ellipse(mouseX, mouseY, 20, 20); // Outer circle
+
+        // Inner circle with moving yellow and specific blue gradient
+        this.gradientOffset += 0.05; // Increment gradient offset for animation
+        let gradient = drawingContext.createRadialGradient(
+            mouseX + cos(this.gradientOffset) * 5,
+            mouseY + sin(this.gradientOffset) * 5,
+            0,
+            mouseX,
+            mouseY,
+            15
+        );
+        gradient.addColorStop(0, 'yellow');
+        gradient.addColorStop(0.5, 'rgba(0, 128, 255, 0.8)'); // Specific blue color
+        gradient.addColorStop(1, 'yellow');
+        drawingContext.fillStyle = gradient;
+
+        stroke(200); // Much lighter gray stroke
+        strokeWeight(1); // 1 point stroke
+        ellipse(mouseX, mouseY, 15, 15); // Inner circle
+        pop();
+    }
+
+    isMouseOverAnyButton() {
+        return Object.values(this.buttons).some(button => this.isMouseOverButton(button.x, button.y, button.width, button.height));
+    }
+
+    drawButtons() {
+        Object.values(this.buttons).forEach(button => {
+            push();
+            fill(255, 204); // 80% opacity
+            rectMode(CENTER);
+            rect(button.x, button.y, button.width, button.height);
+            fill(0);
+            textSize(20);
+            textAlign(CENTER, CENTER);
+            text(button.text, button.x, button.y);
+            pop();
+        });
+    }
+}
 // Easing function for smooth animation
 function easeInOutCubic(t) {
     return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -693,3 +611,4 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
+

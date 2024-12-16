@@ -65,19 +65,19 @@ class Scene6 {
         this.flashDuration = 30; // frames
 
         // Add missile count limit
-        this.maxMissiles = 0;  // Start with no missiles
-        this.missileSpawnRate = 0.01;
-        this.missileSpawnIncrease = 0.0001; // Increment rate over time
+        this.maxMissiles = 3;  // Start with fewer missiles
+        this.missileSpawnRate = 0.005; // Lower initial spawn rate
+        this.missileSpawnIncrease = 0.00002; // Slower increment rate over time
         this.missileStartTime = 57; // Start spawning missiles at 57 seconds
 
-        // Initialize missiles with slower speeds
+        // Initialize missiles
         this.missiles = [];
         for (let i = 0; i < this.maxMissiles; i++) {
             this.missiles.push({
                 x: random(width),
                 y: random(height),
-                speedX: random(-2, 2),  // Slower initial speed (was -5, 5)
-                speedY: random(-2, 2),  // Slower initial speed (was -5, 5)
+                speedX: random(-2, 2),  // Slower initial speed
+                speedY: random(-2, 2),  // Slower initial speed
                 type: random(1) < 0.5 ? 'missile2' : 'missile6',
                 size: this.missileSize
             });
@@ -203,6 +203,23 @@ class Scene6 {
         this.specialPowerActive = false;
         this.lastHitTime = millis();
         this.invincible = false;
+
+        this.dialogueBox = new DialogueBox();
+        this.dialogueIndex = 0;
+        this.dialogues = [
+            { text: "You did it, Hero! Doubt is defeated!", name: "Hope" },
+
+        ];
+        this.showDialogue = false; // Start with no dialogue
+
+        this.doubtDefeated = false;
+        this.doubtAnimationStart = 0;
+        this.doubtDialogueShown = false;
+
+        this.doubtOpacity = 255;
+        this.fadeOverlayAlpha = 0;
+        this.confetti = [];
+        this.fireworks = [];
     }
 
     preload() {
@@ -256,8 +273,17 @@ class Scene6 {
             return;
         }
 
+        if (this.doubtHealth <= 0 && !this.doubtDefeated) {
+            this.animateDoubtDefeat(); // Trigger animation
+            return;
+        }
+
         if (this.gameOver) {
-            this.showGameOver();
+            if (this.victory) {
+                this.showGameOver(); // Victory screen
+            } else {
+                this.showDefeatScreen(); // Defeat screen
+            }
             return;
         }
 
@@ -267,14 +293,14 @@ class Scene6 {
             this.lastTime = millis();
             if (this.gameTimer <= 0) {
                 this.gameOver = true;
-                this.victory = true; // Timer victory
+                this.victory = false; // Defeat if timer reaches 0
             }
         }
 
-        // Check for victory by defeating doubt
-        if (this.doubtHealth <= 0) {
+        // Check defeat conditions
+        if (this.motivation <= 0 || this.heroHitByDoubt()) {
             this.gameOver = true;
-            this.victory = true; // Doubt defeated
+            this.victory = false; // Defeat if motivation is 0 or hero is hit
         }
 
         // Draw background
@@ -283,7 +309,7 @@ class Scene6 {
         // Draw doubt health bar
         this.drawDoubtHealthBar();
 
-        // Update and draw hero
+        // Allow hero movement
         this.updateHeroPosition();
         this.drawHero();
 
@@ -340,11 +366,6 @@ class Scene6 {
 
         // Draw special power bar
         this.drawSpecialPowerBar();
-
-        // Check if special power is active
-        if (this.specialPowerActive) {
-            this.activateSpecialPower();
-        }
     }
 
     drawTimer() {
@@ -376,7 +397,6 @@ class Scene6 {
         fill(0, 255, 0);
         rect(20, 20, this.motivation * 2, 20);
 
-        // Change text color based on motivation level
         fill(this.motivation < 30 ? 255 : 0);
         textSize(16);
         text('Motivation: ' + this.motivation, 25, 35);
@@ -399,10 +419,19 @@ class Scene6 {
     }
 
     drawHero() {
+        // Draw hero character
         push();
         imageMode(CENTER);
         image(this.hero.image, this.hero.x, this.hero.y, this.heroSize, this.heroSize);
         pop();
+    }
+
+    drawHope() {
+        // Draw Hope character flying in
+        let hopeX = width / 2;
+        let hopeY = height / 2 - 100;
+        imageMode(CENTER);
+        image(this.hopeImage, hopeX, hopeY, 100, 100);
     }
 
     createRedOrb() {
@@ -479,17 +508,19 @@ class Scene6 {
     }
 
     createMissile() {
-        let edge = floor(random(4));
-        let missile = {
-            x: this.doubtPosition.x, // Start from Doubt's position
-            y: this.doubtPosition.y,
-            speedX: random(-5, 5),
-            speedY: random(-5, 5),
-            type: random(1) < 0.5 ? 'missile2' : 'missile6',
-            size: this.missileSize
-        };
+        for (let i = 0; i < 2; i++) { // Double the initial count
+            let edge = floor(random(4));
+            let missile = {
+                x: this.doubtPosition.x, // Start from Doubt's position
+                y: this.doubtPosition.y,
+                speedX: random(-5, 5),
+                speedY: random(-5, 5),
+                type: random(1) < 0.5 ? 'missile2' : 'missile6',
+                size: this.missileSize
+            };
 
-        this.missiles.push(missile);
+            this.missiles.push(missile);
+        }
     }
 
     createFireballs() {
@@ -508,6 +539,11 @@ class Scene6 {
     }
 
     updateProjectiles() {
+        // Increase missile spawn rate over time
+        if (this.gameTimer < this.missileStartTime) {
+            this.missileSpawnRate += this.missileSpawnIncrease;
+        }
+
         // Update and draw red orbs
         for (let orb of this.redOrbs) {
             if (orb.updatePosition) {
@@ -577,6 +613,7 @@ class Scene6 {
                 let d = dist(this.hero.x, this.hero.y, missile.x, missile.y);
                 if (d < this.heroSize + 50) {
                     this.createExplosionEffect(missile.x, missile.y);
+                    this.shatterProjectile(missile.x, missile.y); // Shatter effect
                     return false; // Remove missile
                 }
                 return true;
@@ -586,6 +623,7 @@ class Scene6 {
                 let d = dist(this.hero.x, this.hero.y, orb.x, orb.y);
                 if (d < this.heroSize + 50) {
                     this.createExplosionEffect(orb.x, orb.y);
+                    this.shatterProjectile(orb.x, orb.y); // Shatter effect
                     return false; // Remove orb
                 }
                 return true;
@@ -825,56 +863,52 @@ class Scene6 {
             if (!this.victoryAnimation) {
                 this.victoryAnimation = true;
                 this.victoryAnimationStart = millis();
-                this.createExplosionParticles();
 
-                // Stop all sounds
-                if (this.sounds.doubt && this.sounds.doubt.isPlaying()) this.sounds.doubt.stop();
-                if (this.sounds.castle && this.sounds.castle.isPlaying()) this.sounds.castle.stop();
-                if (this.sounds.hurt && this.sounds.hurt.isPlaying()) this.sounds.hurt.stop();
-                if (this.sounds.firing && this.sounds.firing.isPlaying()) this.sounds.firing.stop();
-                if (this.sounds.button && this.sounds.button.isPlaying()) this.sounds.button.stop();
-
-                // Start ambient music
-                if (!this.sounds.ambient) {
-                    this.sounds.ambient = loadSound('./assets/sounds/ambient.mp3', () => {
-                        this.sounds.ambient.play();
-                    });
-                }
+                // Play hopeentry.mp3
+                this.sounds.hopeEntry = loadSound('./assets/sounds/hopeentry.mp3', () => {
+                    this.sounds.hopeEntry.play();
+                });
             }
 
             // Victory screen
             background(0, 150);
-            fill(100, 100, 255, 200);
+            fill(this.dialogueBox.hopeBoxColor);
+            stroke(this.dialogueBox.hopeStrokeColor);
+            strokeWeight(this.dialogueBox.strokeWidth);
             rectMode(CENTER);
-            rect(width / 2, height / 2, 400, 200, 20);
+            rect(width / 2, height / 2, 400, 250, this.dialogueBox.cornerRadius);
 
             fill(255);
             textAlign(CENTER, CENTER);
             textSize(32);
-            text('You beat Doubt!', width / 2, height / 2 - 50);
+            text('You beat Doubt!', width / 2, height / 2 - 60);
 
-            // Collect Learning button
+            // New Collect Learning button
             let buttonWidth = 200;
             let buttonHeight = 60;
-            let buttonX = width / 2 - buttonWidth / 2;
-            let buttonY = height / 2 + 40; // Adjusted position
+            let buttonX = width / 2;
+            let buttonY = height / 2 + 40;
 
-            if (mouseX > buttonX && mouseX < buttonX + buttonWidth &&
-                mouseY > buttonY && mouseY < buttonY + buttonHeight) {
+            if (mouseX > buttonX - buttonWidth / 2 && mouseX < buttonX + buttonWidth / 2 &&
+                mouseY > buttonY - buttonHeight / 2 && mouseY < buttonY + buttonHeight / 2) {
                 fill(120, 120, 255);
             } else {
                 fill(80, 80, 255);
             }
+            rectMode(CENTER);
             rect(buttonX, buttonY, buttonWidth, buttonHeight, 10);
 
             fill(255);
             textSize(24);
             textAlign(CENTER, CENTER);
-            text('Collect Learning', buttonX + buttonWidth / 2, buttonY + buttonHeight / 2);
+            text('Collect Learning', buttonX, buttonY);
 
             if (mouseIsPressed &&
-                mouseX > buttonX && mouseX < buttonX + buttonWidth &&
-                mouseY > buttonY && mouseY < buttonY + buttonHeight) {
+                mouseX > buttonX - buttonWidth / 2 && mouseX < buttonX + buttonWidth / 2 &&
+                mouseY > buttonY - buttonHeight / 2 && mouseY < buttonY + buttonHeight / 2) {
+                if (this.sounds.hopeEntry && this.sounds.hopeEntry.isPlaying()) {
+                    this.sounds.hopeEntry.stop(); // Stop hopeentry.mp3
+                }
                 switchScene(new Scene7());
             }
         } else {
@@ -897,11 +931,22 @@ class Scene6 {
     }
 
     drawConfetti() {
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 20; i++) { // Reduced by 80%
             let x = random(width);
             let y = random(height);
             let size = random(5, 10);
             fill(random(255), random(255), random(255));
+            noStroke();
+            ellipse(x, y, size, size);
+        }
+    }
+
+    drawFireworks() {
+        for (let i = 0; i < 1; i++) { // Subtle effect
+            let x = random(width);
+            let y = random(height / 2);
+            let size = random(20, 50);
+            fill(random(255), random(255), random(255), 150);
             noStroke();
             ellipse(x, y, size, size);
         }
@@ -1193,33 +1238,39 @@ class Scene6 {
 
     // Add this method to reset the game
     resetGame() {
-        this.setup();
-        this.instructionsRead = false;
+        // Reset game variables
         this.gameOver = false;
-        this.motivation = 100;
+        this.victory = false;
+        this.doubtDefeated = false;
         this.doubtHealth = 100;
+        this.motivation = 100;
         this.gameTimer = 60;
-        this.hero.x = 100;
-        this.hero.y = height / 2;
+        this.dialogueIndex = 0;
+        this.showDialogue = false;
+        this.particles = [];
         this.missiles = [];
         this.redOrbs = [];
-        this.bursts = [];
-        this.specialPowerTime = 0;
-        this.invincible = false;
         this.specialPowerActive = false;
+        this.invincible = false;
+        this.cannonActive = false;
+        this.lastTime = millis();
 
-        // Stop any ongoing sounds
-        if (this.sounds.doubt && this.sounds.doubt.isPlaying()) this.sounds.doubt.stop();
-        if (this.sounds.castle && this.sounds.castle.isPlaying()) this.sounds.castle.stop();
-        if (this.sounds.hurt && this.sounds.hurt.isPlaying()) this.sounds.hurt.stop();
-        if (this.sounds.firing && this.sounds.firing.isPlaying()) this.sounds.firing.stop();
-        if (this.sounds.button && this.sounds.button.isPlaying()) this.sounds.button.stop();
-        if (this.sounds.ambient && this.sounds.ambient.isPlaying()) this.sounds.ambient.stop();
+        // Reset hero position
+        this.hero.x = width / 2;
+        this.hero.y = height - 50;
 
-        // Reset any animations or effects
-        this.fadeAlpha = 0;
-        this.fadeStarted = false;
-        this.flashAlpha = 0;
+        // Reset cannon properties
+        this.cannonPosition = createVector(this.hero.x, this.hero.y);
+        this.cannonDirection = createVector(1, 0);
+
+        // Play castle.mp3 from the beginning
+        if (this.sounds.castle) {
+            this.sounds.castle.stop();
+            this.sounds.castle.play();
+        }
+
+        // Reset any other necessary game state
+        this.setup(); // Reinitialize game setup if needed
     }
 
     updateSpecialPowerBar() {
@@ -1238,7 +1289,6 @@ class Scene6 {
         fill(255, 255, 0);
         rect(20, 50, (this.specialPowerTime / 15000) * 200, 20);
 
-        // Change text color based on special power level
         fill((this.specialPowerTime / 15000) < 0.3 ? 255 : 0);
         textSize(16);
         text('Special Power', 25, 65);
@@ -1299,7 +1349,16 @@ class Scene6 {
 
         let shieldX = this.hero.x + cos(frameCount * 0.1) * 15;
         let shieldY = this.hero.y + sin(frameCount * 0.1) * 15;
-        ellipse(shieldX, shieldY, this.heroSize + 70 + pulse, this.heroSize + 70 + pulse);
+
+        // Create jagged edges
+        beginShape();
+        for (let i = 0; i < TWO_PI; i += 0.1) {
+            let offset = random(-10, 10); // Jaggedness
+            let x = shieldX + (this.heroSize + 70 + pulse + offset) * cos(i);
+            let y = shieldY + (this.heroSize + 70 + pulse + offset) * sin(i);
+            vertex(x, y);
+        }
+        endShape(CLOSE);
 
         // Add glowing effect
         stroke(255, 255, 0, 150);
@@ -1316,6 +1375,210 @@ class Scene6 {
             ellipse(x + random(-20, 20), y + random(-20, 20), random(20, 40));
         }
         pop();
+    }
+
+    // Add this method to create shatter effect
+    shatterProjectile(x, y) {
+        for (let i = 0; i < 10; i++) {
+            this.particles.push({
+                x: x,
+                y: y,
+                vx: random(-3, 3),
+                vy: random(-3, 3),
+                size: random(5, 15),
+                alpha: 255
+            });
+        }
+    }
+
+    handleDialogue() {
+        if (this.dialogueIndex < this.dialogues.length) {
+            let currentDialogue = this.dialogues[this.dialogueIndex];
+            if (!this.dialogueBox.isTyping) {
+                this.dialogueBox.startDialogue(currentDialogue.text, currentDialogue.name);
+            }
+            this.dialogueBox.update();
+            this.dialogueBox.draw();
+
+            if (this.dialogueBox.isComplete()) {
+                this.dialogueIndex++;
+                this.dialogueBox.stopTypingSound();
+            }
+        } else {
+            this.showDialogue = false;
+        }
+    }
+
+    animateDoubtDefeat() {
+        if (this.doubtAnimationStart === 0) {
+            this.doubtAnimationStart = millis();
+            if (this.sounds.doubt && this.sounds.doubt.isPlaying()) {
+                this.sounds.doubt.stop(); // Stop other sounds
+            }
+            if (this.sounds.castle && this.sounds.castle.isPlaying()) {
+                this.sounds.castle.stop(); // Stop castle.mp3
+            }
+            this.sounds.death = loadSound('./assets/sounds/death.mp3', () => {
+                this.sounds.death.play();
+            });
+        }
+
+        let timeElapsed = millis() - this.doubtAnimationStart;
+
+        if (timeElapsed < 6000) { // 6 seconds
+            // Erratic spiral movement with speed adjustment
+            let angle = timeElapsed * 0.1;
+            let radius = map(timeElapsed, 0, 6000, 300, 0);
+            let speedFactor = map(timeElapsed, 0, 6000, 1, 0.1);
+            this.doubtPosition.x = width / 2 + cos(angle) * radius * speedFactor;
+            this.doubtPosition.y = height / 2 + sin(angle) * radius * speedFactor;
+
+            // Draw shadow trail
+            this.drawShadowTrail();
+
+            // Draw Doubt with warping and rotation effect
+            push();
+            imageMode(CENTER);
+            tint(255, this.doubtOpacity);
+            translate(this.doubtPosition.x, this.doubtPosition.y);
+            rotate(angle);
+            scale(1 + sin(timeElapsed * 0.1) * 0.5);
+            image(this.doubt, 0, 0, 150, 150);
+            pop();
+
+            // Draw red streaks and lightning
+            this.drawStreaksAndLightning(timeElapsed);
+
+            // Fade overlay
+            this.fadeOverlayAlpha = map(timeElapsed, 0, 6000, 0, 255);
+            this.doubtOpacity = map(timeElapsed, 0, 6000, 255, 0);
+
+            push();
+            fill(0, this.fadeOverlayAlpha);
+            rect(0, 0, width, height);
+            pop();
+
+            // Display Doubt's final words
+            if (!this.doubtDialogueShown) {
+                this.dialogueBox.startDialogue("How could you? I was a part of you.", "Doubt");
+                this.doubtDialogueShown = true;
+            }
+            this.dialogueBox.update();
+            this.dialogueBox.draw();
+        } else {
+            this.doubtDefeated = true;
+            this.victory = true; // Set victory state
+            this.gameOver = true; // Ensure game over state
+            this.showGameOver(); // Transition to victory screen
+        }
+    }
+
+    drawShadowTrail() {
+        for (let i = 0; i < 5; i++) {
+            let shadowX = this.doubtPosition.x - i * 10;
+            let shadowY = this.doubtPosition.y - i * 10;
+            push();
+            imageMode(CENTER);
+            tint(255, 50); // Lesser opacity for shadow
+            image(this.doubt, shadowX, shadowY, 150, 150);
+            pop();
+        }
+    }
+
+    createFadingParticles(x, y) {
+        for (let i = 0; i < 5; i++) {
+            this.particles.push({
+                x: x,
+                y: y,
+                vx: random(-1, 1),
+                vy: random(-1, 1),
+                size: random(5, 10),
+                alpha: 255
+            });
+        }
+    }
+
+    updateParticles() {
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            let p = this.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.alpha -= 5;
+            if (p.alpha <= 0) {
+                this.particles.splice(i, 1);
+            } else {
+                push();
+                noStroke();
+                fill(255, 0, 0, p.alpha);
+                ellipse(p.x, p.y, p.size);
+                pop();
+            }
+        }
+    }
+
+    drawStreaksAndLightning(timeElapsed) {
+        push();
+        stroke(255, 0, 0, 150); // Red sparks
+        strokeWeight(2);
+        for (let i = 0; i < 30; i++) { // Increase number of streaks
+            let angle = random(TWO_PI);
+            let length = random(20, 200);
+            let x1 = this.doubtPosition.x + cos(angle) * length;
+            let y1 = this.doubtPosition.y + sin(angle) * length;
+            let x2 = this.doubtPosition.x + cos(angle) * (length + random(20, 50));
+            let y2 = this.doubtPosition.y + sin(angle) * (length + random(20, 50));
+            line(x1, y1, x2, y2);
+        }
+        pop();
+    }
+
+    startDialogue(text, name) {
+        this.targetText = text;
+        this.currentText = "";
+        this.charIndex = 0;
+        this.isTyping = true;
+        this.speakerName = name;
+        this.opacity = 255;
+        this.timer = 0;
+
+        if (name === 'Hero') {
+            this.boxColor = this.heroBoxColor;
+            this.strokeColor = this.heroStrokeColor;
+        }
+        // Other conditions...
+    }
+
+    showDefeatScreen() {
+        background(0, 150);
+        fill(100, 100, 255, 200);
+        rectMode(CENTER);
+        rect(width / 2, height / 2, 200, 100, 20);
+
+        fill(255);
+        textAlign(CENTER, CENTER);
+        textSize(24);
+        text('Try Again', width / 2, height / 2);
+
+        // Restart game on click
+        if (mouseIsPressed) {
+            this.resetGame();
+        }
+    }
+
+    heroHitByDoubt() {
+        // Logic to determine if the hero is hit by charging Doubt or fireblasts
+        // Return true if hit, otherwise false
+        return this.isCharging && this.checkHeroCollision() || this.checkFireblastCollision();
+    }
+
+    checkHeroCollision() {
+        // Implement collision detection logic for hero
+        return false; // Placeholder
+    }
+
+    checkFireblastCollision() {
+        // Implement collision detection logic for fireblasts
+        return false; // Placeholder
     }
 }
 
