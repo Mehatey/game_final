@@ -529,6 +529,9 @@ class Scene4 {
 
     transitionToScene5() {
         this.cleanup();
-        currentScene = new Scene5();
+        currentScene = new Scene4_5();  // Go to Scene4.5 first
+        if (currentScene.preload) {
+            currentScene.preload();
+        }
     }
 }

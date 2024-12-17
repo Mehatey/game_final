@@ -150,10 +150,28 @@ class Scene1 {
             }
         });
 
+        this.debugButtonScene4_5 = createButton('Scene4.5');
+        this.debugButtonScene4_5.position(20, height - 120);  // Position above the other debug buttons
+        this.debugButtonScene4_5.style('background-color', '#FF0000');
+        this.debugButtonScene4_5.style('color', 'white');
+        this.debugButtonScene4_5.style('border', 'none');
+        this.debugButtonScene4_5.style('padding', '10px 20px');
+        this.debugButtonScene4_5.style('cursor', 'pointer');
+        this.debugButtonScene4_5.style('font-family', 'ARCADE');
+
+        // Add click handler
+        this.debugButtonScene4_5.mousePressed(() => {
+            this.cleanup();
+            currentScene = new Scene4_5();
+            if (currentScene.preload) {
+                currentScene.preload();
+            }
+        });
+
         this.soundPlayButton = {
-            x: 50,
-            y: 50,
-            radius: 25,
+            x: 65,
+            y: 35,
+            radius: 15,
             isPlaying: false,
             hover: false
         };
@@ -440,33 +458,38 @@ class Scene1 {
 
         // Draw sound play button
         push();
-        // Translucent circle
+        // Check hover state
+        this.soundPlayButton.hover = dist(mouseX, mouseY, this.soundPlayButton.x, this.soundPlayButton.y) < this.soundPlayButton.radius;
+
+        // Add blue glow on hover
         if (this.soundPlayButton.hover) {
             drawingContext.shadowBlur = 15;
-            drawingContext.shadowColor = 'rgba(0, 150, 255, 0.5)';
+            drawingContext.shadowColor = 'rgba(0, 150, 255, 0.7)';
         }
-        fill(255, 255, 255, 100);
+
+        // Translucent gray circle
+        fill(128, 128, 128, 150);
         noStroke();
         circle(this.soundPlayButton.x, this.soundPlayButton.y, this.soundPlayButton.radius * 2);
 
-        // Play triangle or pause bars
-        fill(0, 0, 0, 200);
+        // Smaller play triangle or pause bars
+        fill(255);
         if (!this.soundPlayButton.isPlaying) {
             triangle(
-                this.soundPlayButton.x - 7, this.soundPlayButton.y - 10,
-                this.soundPlayButton.x - 7, this.soundPlayButton.y + 10,
-                this.soundPlayButton.x + 10, this.soundPlayButton.y
+                this.soundPlayButton.x - 4, this.soundPlayButton.y - 6,
+                this.soundPlayButton.x - 4, this.soundPlayButton.y + 6,
+                this.soundPlayButton.x + 6, this.soundPlayButton.y
             );
         } else {
-            rect(this.soundPlayButton.x - 7, this.soundPlayButton.y - 10, 4, 20);
-            rect(this.soundPlayButton.x + 3, this.soundPlayButton.y - 10, 4, 20);
+            rect(this.soundPlayButton.x - 4, this.soundPlayButton.y - 4, 2, 8);
+            rect(this.soundPlayButton.x + 1, this.soundPlayButton.y - 4, 2, 8);
         }
 
-        // Text under button
-        textSize(12);
+        // Text "Play sounds" much lower
+        textSize(16);
         textAlign(CENTER);
-        fill(255, 255, 255, 200);
-        text("Play sounds", this.soundPlayButton.x, this.soundPlayButton.y + 30);
+        fill(255);
+        text("Sounds", this.soundPlayButton.x, this.soundPlayButton.y + 35);  // Changed from +45 to +35
         pop();
 
         // Check hover state
