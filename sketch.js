@@ -43,9 +43,8 @@ function keyPressed() {
 }
 
 function switchScene(newScene) {
-    if (currentScene) {
-        // Cleanup PIXI if it was used
-        cleanupPixi();
+    if (currentScene && currentScene.cleanup) {
+        currentScene.cleanup();
     }
     currentScene = newScene;
 }

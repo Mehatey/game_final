@@ -1,17 +1,13 @@
 class Scene5 {
     constructor() {
-        // Force cleanup of any lingering audio
-        getAudioContext().suspend();
-        getAudioContext().resume();
-        
         // Initialize SoundManager first
         this.soundManager = new SoundManager();
-        
+
         this.assetsLoaded = false;
         this.hero = new Hero(width / 2, height / 2);
         this.hope = new Hope();
         this.dialogueBox = new DialogueBox();
-        
+
         // Sound played flags
         this.fearSoundPlayed = false;
         this.doubtSoundPlayed = false;
@@ -130,14 +126,22 @@ class Scene5 {
         this.enemySequence = ['fear', 'doubt', 'regret', 'anger', 'procast', 'insecurity'];
 
         this.procastDialogues = [
-            { speaker: 'Procrastination', text: "I am Procrastination. The endless delay.", 
-              color: color(0, 128, 128, 230) },
-            { speaker: 'Hero', text: "I won't let you stop me!", 
-              color: color(128, 128, 128, 230) },
-            { speaker: 'Procrastination', text: "Tomorrow is always better, isn't it?", 
-              color: color(0, 128, 128, 230) },
-            { speaker: 'Hope', text: "Defeat Procrastination, and you'll find your drive.", 
-              color: color(0, 100, 255, 230) }
+            {
+                speaker: 'Procrastination', text: "I am Procrastination. The endless delay.",
+                color: color(0, 128, 128, 230)
+            },
+            {
+                speaker: 'Hero', text: "I won't let you stop me!",
+                color: color(128, 128, 128, 230)
+            },
+            {
+                speaker: 'Procrastination', text: "Tomorrow is always better, isn't it?",
+                color: color(0, 128, 128, 230)
+            },
+            {
+                speaker: 'Hope', text: "Defeat Procrastination, and you'll find your drive.",
+                color: color(0, 100, 255, 230)
+            }
         ];
 
         this.procastCurrentDialogue = 0;
@@ -155,7 +159,7 @@ class Scene5 {
             procast: 0,
             insecurity: 0
         };
-        
+
         // Add scary background music
         this.scaryMusic = null;
 
@@ -190,7 +194,7 @@ class Scene5 {
             this.background = await loadImage('assets/backgrounds/bg9.gif');
             await this.hero.preload();
             await this.hope.preload();
-            
+
             // Load enemy images
             this.fear = await loadImage('assets/characters/enemies/fear.gif');
             this.doubt = await loadImage('assets/characters/enemies/doubt.gif');
@@ -198,10 +202,10 @@ class Scene5 {
             this.anger = await loadImage('assets/characters/enemies/anger.gif');
             this.procast = await loadImage('assets/characters/enemies/procast.gif');
             this.insecurity = await loadImage('assets/characters/enemies/insecurity.gif');
-            
+
             // Initialize sound manager and load sounds
             this.soundManager = new SoundManager();
-            
+
             // Load all sounds
             await Promise.all([
                 this.soundManager.loadSound('scary', 'assets/sounds/scary.mp3'),
@@ -314,7 +318,7 @@ class Scene5 {
 
             let fearX, fearY;
             let entranceTime = millis() - this.entranceStartTimes.fear;
-            
+
             if (entranceTime < this.entranceDuration) {
                 this.fearAngle += 0.05;
                 fearX = this.hero.x + cos(this.fearAngle) * this.fearRadius;
@@ -345,10 +349,10 @@ class Scene5 {
                     // Only set currentEnemy to null to allow next enemy
                     this.currentEnemy = null;
                     this.currentEnemyIndex++;
-                    
+
                     if (this.currentEnemyIndex < this.enemySequence.length) {
                         let nextEnemy = this.enemySequence[this.currentEnemyIndex];
-                        switch(nextEnemy) {
+                        switch (nextEnemy) {
                             case 'doubt':
                                 this.doubtActive = true;
                                 this.currentEnemy = 'doubt';
@@ -369,7 +373,7 @@ class Scene5 {
 
             let doubtX, doubtY;
             let entranceTime = millis() - this.entranceStartTimes.doubt;
-            
+
             if (entranceTime < this.entranceDuration) {
                 this.doubtAngle += 0.05;
                 doubtX = this.hero.x + cos(this.doubtAngle) * this.doubtRadius;
@@ -401,7 +405,7 @@ class Scene5 {
                     this.currentEnemy = null;
                     this.currentEnemyIndex++;
                     console.log("Moving to next enemy, index:", this.currentEnemyIndex); // Debug log
-                    
+
                     // Activate next enemy (Regret)
                     this.regretActive = true;
                     this.currentEnemy = 'regret';
@@ -419,7 +423,7 @@ class Scene5 {
 
             let regretX, regretY;
             let entranceTime = millis() - this.entranceStartTimes.regret;
-            
+
             if (entranceTime < this.entranceDuration) {
                 this.regretAngle += 0.05;
                 regretX = this.hero.x + cos(this.regretAngle) * this.regretRadius;
@@ -451,7 +455,7 @@ class Scene5 {
                     this.currentEnemy = null;
                     this.currentEnemyIndex++;
                     console.log("Moving to next enemy, index:", this.currentEnemyIndex); // Debug log
-                    
+
                     // Activate next enemy (Anger)
                     this.angerActive = true;
                     this.currentEnemy = 'anger';
@@ -469,7 +473,7 @@ class Scene5 {
 
             let angerX, angerY;
             let entranceTime = millis() - this.entranceStartTimes.anger;
-            
+
             if (entranceTime < this.entranceDuration) {
                 this.angerAngle += 0.05;
                 angerX = this.hero.x + cos(this.angerAngle) * this.angerRadius;
@@ -501,7 +505,7 @@ class Scene5 {
                     this.currentEnemy = null;
                     this.currentEnemyIndex++;
                     console.log("Moving to Procrastination, index:", this.currentEnemyIndex);
-                    
+
                     // Directly activate Procrastination
                     this.procastActive = true;
                     this.currentEnemy = 'procast';
@@ -519,7 +523,7 @@ class Scene5 {
 
             let procastX, procastY;
             let entranceTime = millis() - this.entranceStartTimes.procast;
-            
+
             if (entranceTime < this.entranceDuration) {
                 this.procastAngle += 0.05;
                 procastX = this.hero.x + cos(this.procastAngle) * this.procastRadius;
@@ -551,7 +555,7 @@ class Scene5 {
                     this.currentEnemy = null;
                     this.currentEnemyIndex++;
                     console.log("Moving to Insecurity, index:", this.currentEnemyIndex);
-                    
+
                     // Directly activate Insecurity
                     this.insecurityActive = true;
                     this.currentEnemy = 'insecurity';
@@ -569,7 +573,7 @@ class Scene5 {
 
             let insecurityX, insecurityY;
             let entranceTime = millis() - this.entranceStartTimes.insecurity;
-            
+
             if (entranceTime < this.entranceDuration) {
                 this.insecurityAngle += 0.05;
                 insecurityX = this.hero.x + cos(this.insecurityAngle) * this.insecurityRadius;
@@ -596,17 +600,17 @@ class Scene5 {
                     let dialogue = this.insecurityDialogues[this.insecurityCurrentDialogue];
                     this.dialogueBox.startDialogue(dialogue.text, dialogue.speaker);
                     this.insecurityCurrentDialogue++;
-                    
+
                     // Check if this was the last dialogue
-                    if (this.insecurityCurrentDialogue === this.insecurityDialogues.length && 
+                    if (this.insecurityCurrentDialogue === this.insecurityDialogues.length &&
                         dialogue.text.includes("Defeat Insecurity, and you'll find belief in yourself")) {
-                        
+
                         // Stop sounds and cleanup
                         if (this.scarySound && this.scarySound.isPlaying()) {
                             this.scarySound.stop();
                         }
                         this.cleanup();
-                        
+
                         // Clear and transition
                         clear();
                         background(0);
@@ -637,13 +641,13 @@ class Scene5 {
                     stroke(255, 255, 255, warpLine.alpha);
                     warpLine.x += warpLine.speed;
                     if (warpLine.x > width) warpLine.x = 0;
-                    
-                    let angle = atan2(height/2 - warpLine.y, width/2 - warpLine.x);
+
+                    let angle = atan2(height / 2 - warpLine.y, width / 2 - warpLine.x);
                     let startX = warpLine.x;
                     let startY = warpLine.y;
                     let endX = warpLine.x + cos(angle) * warpLine.length;
                     let endY = warpLine.y + sin(angle) * warpLine.length;
-                    
+
                     line(startX, startY, endX, endY);
                 }
                 pop();
@@ -659,37 +663,38 @@ class Scene5 {
 
                 push();
                 drawingContext.save();
-                
+
                 // Create portal shape
-                translate(width/2, height/2);
+                translate(width / 2, height / 2);
+                noFill();
                 beginShape();
                 for (let a = 0; a < TWO_PI; a += 0.1) {
                     let xoff = map(cos(a + frameCount * 0.05), -1, 1, 0, 0.2);
                     let yoff = map(sin(a + frameCount * 0.05), -1, 1, 0, 0.2);
-                    let r = this.doorWidth/2;
+                    let r = this.doorWidth / 2;
                     let x = r * cos(a) + noise(xoff, yoff, frameCount * 0.02) * 20;
                     let y = r * sin(a) + noise(xoff, yoff + 5, frameCount * 0.02) * 20;
                     vertex(x, y);
                 }
                 endShape(CLOSE);
-                
+
                 // Add glow and portal effects
                 drawingContext.shadowBlur = 30;
                 drawingContext.shadowColor = 'rgba(0, 150, 255, 0.5)';
-                
+
                 drawingContext.restore();
                 pop();
 
                 // Draw portal edge effects
                 push();
-                translate(width/2, height/2);
+                translate(width / 2, height / 2);
                 noFill();
                 for (let i = 0; i < 3; i++) {
                     stroke(0, 150, 255, 255 - i * 50);
                     strokeWeight(3 - i);
                     beginShape();
                     for (let a = 0; a < TWO_PI; a += 0.1) {
-                        let r = this.doorWidth/2 + i * 5;
+                        let r = this.doorWidth / 2 + i * 5;
                         let x = r * cos(a);
                         let y = r * sin(a);
                         vertex(x, y);
@@ -706,32 +711,11 @@ class Scene5 {
     }
 
     cleanup() {
-        if (this.soundManager) {
-            this.soundManager.stopCurrentSound();
-        }
-        // Reset all sound flags
-        this.fearSoundPlayed = false;
-        this.doubtSoundPlayed = false;
-        this.regretSoundPlayed = false;
-        this.angerSoundPlayed = false;
-        this.procastSoundPlayed = false;
-        this.insecuritySoundPlayed = false;
-        
-        // Force cleanup of audio context
-        getAudioContext().suspend();
-        Object.keys(this.enemyStates).forEach(enemy => {
-            this.enemyStates[enemy] = { active: false, complete: false };
+        // Stop and unload all sounds
+        Object.values(this.sounds).forEach(sound => {
+            sound.stop();
+            sound.unload();
         });
-        this.currentEnemy = null;
-
-        if (this.scarySound) {
-            this.scarySound.stop();
-        }
-        
-        // Remove or comment out ambient sound cleanup
-        // if (this.ambientSound) {
-        //     this.ambientSound.stop();
-        // }
     }
 
     drawCannon() {

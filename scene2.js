@@ -43,9 +43,18 @@ class Scene2 {
         }
 
         // Add sounds
-        this.typingSound = loadSound('./assets/sounds/typing.mp3');
-        this.entrySound = loadSound('./assets/sounds/entry.mp3', () => {
-            this.entrySound.play(); // Play entry sound as soon as it's loaded
+        this.typingSound = new Howl({
+            src: ['./assets/sounds/typing.mp3'],
+            volume: 0.3,
+            loop: true
+        });
+
+        this.entrySound = new Howl({
+            src: ['./assets/sounds/entry.mp3'],
+            volume: 0.5,
+            onload: () => {
+                this.entrySound.play();
+            }
         });
 
         // Move video loading here
@@ -85,13 +94,13 @@ class Scene2 {
                     stroke(255, 255, 255, warpLine.alpha);
                     warpLine.x += warpLine.speed;
                     if (warpLine.x > width) warpLine.x = 0;
-                    
-                    let angle = atan2(height/2 - warpLine.y, width/2 - warpLine.x);
+
+                    let angle = atan2(height / 2 - warpLine.y, width / 2 - warpLine.x);
                     let startX = warpLine.x;
                     let startY = warpLine.y;
                     let endX = warpLine.x + cos(angle) * warpLine.length;
                     let endY = warpLine.y + sin(angle) * warpLine.length;
-                    
+
                     line(startX, startY, endX, endY);
                 }
                 pop();
@@ -107,37 +116,38 @@ class Scene2 {
 
                 push();
                 drawingContext.save();
-                
+
                 // Create portal shape
-                translate(width/2, height/2);
+                translate(width / 2, height / 2);
+                noFill();
                 beginShape();
                 for (let a = 0; a < TWO_PI; a += 0.1) {
                     let xoff = map(cos(a + frameCount * 0.05), -1, 1, 0, 0.2);
                     let yoff = map(sin(a + frameCount * 0.05), -1, 1, 0, 0.2);
-                    let r = this.doorWidth/2;
+                    let r = this.doorWidth / 2;
                     let x = r * cos(a) + noise(xoff, yoff, frameCount * 0.02) * 20;
                     let y = r * sin(a) + noise(xoff, yoff + 5, frameCount * 0.02) * 20;
                     vertex(x, y);
                 }
                 endShape(CLOSE);
-                
+
                 // Add glow and portal effects
                 drawingContext.shadowBlur = 30;
                 drawingContext.shadowColor = 'rgba(0, 150, 255, 0.5)';
-                
+
                 drawingContext.restore();
                 pop();
 
                 // Draw portal edge effects
                 push();
-                translate(width/2, height/2);
+                translate(width / 2, height / 2);
                 noFill();
                 for (let i = 0; i < 3; i++) {
                     stroke(0, 150, 255, 255 - i * 50);
                     strokeWeight(3 - i);
                     beginShape();
                     for (let a = 0; a < TWO_PI; a += 0.1) {
-                        let r = this.doorWidth/2 + i * 5;
+                        let r = this.doorWidth / 2 + i * 5;
                         let x = r * cos(a);
                         let y = r * sin(a);
                         vertex(x, y);
@@ -168,34 +178,26 @@ class Scene2 {
             push();
             rectMode(CENTER);
 
-            // Main button
-            let isHovered = this.isMouseOverButton(width/2, height/2, this.buttonWidth, this.buttonHeight);
+            // Check if mouse is over button
+            let isHovered = this.isMouseOverButton(width / 2, height / 2, this.buttonWidth, this.buttonHeight);
+
+            // Button glow effect when hovered
             if (isHovered) {
                 drawingContext.shadowBlur = 20;
                 drawingContext.shadowColor = 'rgba(255, 255, 0, 0.5)';
-                fill(255, 255, 0);
+                fill(255, 255, 0); // Yellow fill when hovered
             } else {
                 fill(255);
             }
-            rect(width/2, height/2, this.buttonWidth, this.buttonHeight, 10);
-            fill(0);
+
+            // Draw button
+            rect(width / 2, height / 2, this.buttonWidth, this.buttonHeight, 10);
+
+            // Button text
             textAlign(CENTER, CENTER);
             textSize(20);
-            text("Enter Meh's World", width/2, height/2);
-
-            // Skip Cinematic button
-            let isSkipHovered = this.isMouseOverButton(width/2, height/2 + 80, this.buttonWidth, this.buttonHeight);
-            if (isSkipHovered) {
-                drawingContext.shadowBlur = 20;
-                drawingContext.shadowColor = 'rgba(255, 255, 0, 0.5)';
-                fill(255, 255, 0);
-            } else {
-                fill(255);
-            }
-            rect(width/2, height/2 + 80, this.buttonWidth, this.buttonHeight, 10);
             fill(0);
-            text("Skip Cinematic", width/2, height/2 + 80);
-
+            text("Enter Meh's World", width / 2, height / 2);
             pop();
         }
 
@@ -276,15 +278,11 @@ class Scene2 {
     }
 
     mousePressed() {
+        console.log("Mouse pressed in Scene2");
         if (this.textComplete && this.squares.length === 0) {
-            // Original button for entering Meh's world
-            if (this.isMouseOverButton(width/2, height/2, this.buttonWidth, this.buttonHeight)) {
+            if (this.isMouseOverButton(width / 2, height / 2, this.buttonWidth, this.buttonHeight)) {
+                console.log("Starting video sequence");
                 this.startVideoSequence();
-            }
-            // New skip cinematic button
-            if (this.isMouseOverButton(width/2, height/2 + 80, this.buttonWidth, this.buttonHeight)) {
-                this.cleanup();
-                currentScene = new Scene3();
             }
         }
     }
@@ -294,7 +292,7 @@ class Scene2 {
         if (this.typingSound && this.typingSound.isPlaying()) {
             this.typingSound.stop();
         }
-        
+
         this.videoPlaying = true;
         if (this.videos.length > 0) {
             this.currentVideo = this.videos[0];
@@ -336,7 +334,7 @@ class Scene2 {
         if (this.entrySound && this.entrySound.isPlaying()) {
             this.entrySound.stop();
         }
-        
+
         // Clean up videos
         this.videos.forEach(video => {
             if (video) {

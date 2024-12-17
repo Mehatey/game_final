@@ -15,7 +15,7 @@ class Scene4 {
             { speaker: 'hope', text: "Of course you didn't. Fear blinds. Doubt muffles." },
             { speaker: 'hope', text: "Answer these six questions, and we'll see the real obstacles holding you back." },
 
-            { speaker: 'hero', text: "Fine. Let's go." }
+            { speaker: 'hero', text: "Let's do it." }
         ];
         this.playerName = "Square";
         this.narrationMusic = null;
@@ -51,12 +51,12 @@ class Scene4 {
         this.showingPostDialogue = false;
         this.postDialogues = [
             { speaker: 'hope', text: "Interesting. Your answers paint quite the picture." },
-            { speaker: 'hero', text: "What do you mean? What picture?" },
-            { speaker: 'hope', text: "These questions aren't just words. They are the map of your struggles." },
-            { speaker: 'hero', text: "You're saying my thoughts are going to start attacking me again?" },
+            { speaker: 'hero', text: "Well aren't you a wise one?" },
+            { speaker: 'hope', text: "These questions are the map of your struggles." },
+            { speaker: 'hero', text: "Fuck are my thoughts going to start attacking me again?" },
             { speaker: 'hope', text: "Exactly. But you're not without a weapon." },
-            { speaker: 'hero', text: "This is what I was waiting for?" },
-            { speaker: 'hope', text: "Press the spacebar, square one, and fire their name." }
+            { speaker: 'hero', text: "Let's go! this is what I was waiting for" },
+            { speaker: 'hope', text: "Press the spacebar, and fire their name." }
         ];
         this.currentPostDialogue = 0;
         this.cannonName = '';
@@ -65,7 +65,7 @@ class Scene4 {
         this.cannonActive = false;
         this.cannonFlash = false;
 
-        // Initialize sounds with Howler
+        // Initialize game music with Howler
         this.gameMusic = new Howl({
             src: ['./assets/sounds/gamemusic.mp3'],
             volume: 0.5,
@@ -78,6 +78,7 @@ class Scene4 {
             onloaderror: (id, err) => console.error("Error loading game music:", err)
         });
 
+        // Initialize typing sound with Howler
         this.dialogueBox.typingSound = new Howl({
             src: ['./assets/sounds/typing.mp3'],
             volume: 0.3,
@@ -127,7 +128,6 @@ class Scene4 {
         this.background = loadImage('assets/backgrounds/bg9.gif');
         this.hero.preload();
         this.hope.preload();
-        this.dialogueBox.typingSound = loadSound('assets/sounds/typing.mp3');
     }
 
     draw() {
@@ -304,35 +304,17 @@ class Scene4 {
     }
 
     cleanup() {
+        if (this.sceneTransitionTimer) {
+            clearTimeout(this.sceneTransitionTimer);
+        }
+        // Clean up all Howler sounds
         if (this.gameMusic) {
             this.gameMusic.stop();
             this.gameMusic.unload();
         }
-        
         if (this.dialogueBox && this.dialogueBox.typingSound) {
             this.dialogueBox.typingSound.stop();
             this.dialogueBox.typingSound.unload();
-        }
-
-        if (this.narrationMusic) {
-            this.narrationMusic.setLoop(false);
-            this.narrationMusic.stop();
-            this.narrationMusic = null;
-        }
-
-        if (this.inputBox) {
-            this.inputBox.remove();
-            this.inputBox = null;
-        }
-
-        if (this.buttonSound) {
-            this.buttonSound.stop();
-            this.buttonSound.unload();
-        }
-
-        if (this.firingSound) {
-            this.firingSound.stop();
-            this.firingSound.unload();
         }
     }
 
@@ -474,6 +456,7 @@ class Scene4 {
         if (!this.hasFirstCannonFired) {
             this.hasFirstCannonFired = true;
             this.sceneTransitionTimer = setTimeout(() => {
+                this.cleanup();
                 this.transitionToScene5();
             }, 6000); // 6 seconds delay
         }
@@ -545,20 +528,7 @@ class Scene4 {
     }
 
     transitionToScene5() {
-        if (this.narrationMusic && this.narrationMusic.isPlaying()) {
-            this.narrationMusic.stop();
-            this.narrationMusic.disconnect();
-        }
-
-        // Stop all sounds and reset audio context
-        getAudioContext().suspend();
-        getAudioContext().close().then(() => {
-            const allSounds = document.querySelectorAll('audio');
-            allSounds.forEach(sound => {
-                sound.pause();
-                sound.currentTime = 0;
-            });
-            switchScene(new Scene5());
-        });
+        this.cleanup();
+        currentScene = new Scene5();
     }
 }

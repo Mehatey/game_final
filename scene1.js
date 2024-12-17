@@ -130,6 +130,33 @@ class Scene1 {
                 currentScene.preload();
             }
         });
+
+        // Add new Scene5 debug button
+        this.debugButtonScene5 = createButton('Scene5');
+        this.debugButtonScene5.position(20, height - 80);  // Position above the Scene4 button
+        this.debugButtonScene5.style('background-color', '#FF0000');
+        this.debugButtonScene5.style('color', 'white');
+        this.debugButtonScene5.style('border', 'none');
+        this.debugButtonScene5.style('padding', '10px 20px');
+        this.debugButtonScene5.style('cursor', 'pointer');
+        this.debugButtonScene5.style('font-family', 'ARCADE');
+
+        // Add click handler
+        this.debugButtonScene5.mousePressed(() => {
+            this.cleanup();  // Use the same cleanup method
+            currentScene = new Scene5();
+            if (currentScene.preload) {
+                currentScene.preload();
+            }
+        });
+
+        this.soundPlayButton = {
+            x: 50,
+            y: 50,
+            radius: 25,
+            isPlaying: false,
+            hover: false
+        };
     }
 
     preload() {
@@ -410,6 +437,40 @@ class Scene1 {
         }
 
         this.drawCustomCursor(); // Draw the custom cursor
+
+        // Draw sound play button
+        push();
+        // Translucent circle
+        if (this.soundPlayButton.hover) {
+            drawingContext.shadowBlur = 15;
+            drawingContext.shadowColor = 'rgba(0, 150, 255, 0.5)';
+        }
+        fill(255, 255, 255, 100);
+        noStroke();
+        circle(this.soundPlayButton.x, this.soundPlayButton.y, this.soundPlayButton.radius * 2);
+
+        // Play triangle or pause bars
+        fill(0, 0, 0, 200);
+        if (!this.soundPlayButton.isPlaying) {
+            triangle(
+                this.soundPlayButton.x - 7, this.soundPlayButton.y - 10,
+                this.soundPlayButton.x - 7, this.soundPlayButton.y + 10,
+                this.soundPlayButton.x + 10, this.soundPlayButton.y
+            );
+        } else {
+            rect(this.soundPlayButton.x - 7, this.soundPlayButton.y - 10, 4, 20);
+            rect(this.soundPlayButton.x + 3, this.soundPlayButton.y - 10, 4, 20);
+        }
+
+        // Text under button
+        textSize(12);
+        textAlign(CENTER);
+        fill(255, 255, 255, 200);
+        text("Play sounds", this.soundPlayButton.x, this.soundPlayButton.y + 30);
+        pop();
+
+        // Check hover state
+        this.soundPlayButton.hover = dist(mouseX, mouseY, this.soundPlayButton.x, this.soundPlayButton.y) < this.soundPlayButton.radius;
     }
 
     drawPlayButton() {
@@ -684,6 +745,17 @@ class Scene1 {
         if (this.buttons.straightToMainBattle && this.isMouseOver(this.buttons.straightToMainBattle)) {
             this.cleanup();
             currentScene = new Scene6();
+        }
+
+        if (dist(mouseX, mouseY, this.soundPlayButton.x, this.soundPlayButton.y) < this.soundPlayButton.radius) {
+            this.soundPlayButton.isPlaying = !this.soundPlayButton.isPlaying;
+            if (this.soundPlayButton.isPlaying) {
+                // Start all sounds
+                if (this.sound) this.sound.play();
+            } else {
+                // Pause all sounds
+                if (this.sound) this.sound.pause();
+            }
         }
     }
 }
