@@ -121,7 +121,7 @@ class Scene1 {
         this.debugButton.style('padding', '10px 20px');
         this.debugButton.style('cursor', 'pointer');
         this.debugButton.style('font-family', 'ARCADE');
-        
+
         // Add click handler
         this.debugButton.mousePressed(() => {
             this.cleanup();  // Use the same cleanup method
@@ -174,6 +174,13 @@ class Scene1 {
             radius: 15,
             isPlaying: false,
             hover: false
+        };
+
+        this.scene10Button = {
+            x: width - 100,
+            y: 20,
+            width: 80,
+            height: 30
         };
     }
 
@@ -229,7 +236,7 @@ class Scene1 {
 
     // Clean up sounds when scene changes
     cleanup() {
-        // First stop all active sounds
+        // First handle sound cleanup
         if (this.sound && this.sound.isPlaying()) {
             this.sound.stop();
             this.sound.disconnect();
@@ -258,18 +265,23 @@ class Scene1 {
             this.isCastleMusicPlaying = false;
         });
 
-        // Remove any lingering audio elements from the DOM
-        const allAudioElements = document.querySelectorAll('audio');
-        allAudioElements.forEach(audio => {
-            audio.pause();
-            audio.currentTime = 0;
-            audio.remove();
-        });
-
-        // Remove debug button if it exists
+        // Remove ALL debug buttons
         if (this.debugButton) {
             this.debugButton.remove();
         }
+        if (this.debugButtonScene5) {
+            this.debugButtonScene5.remove();
+        }
+        if (this.debugButtonScene4_5) {
+            this.debugButtonScene4_5.remove();
+        }
+
+        // Remove any other p5 elements that might be lingering
+        removeElements();
+
+        // Clear the canvas
+        clear();
+        background(0);
     }
 
     drawTitle() {
@@ -754,31 +766,40 @@ class Scene1 {
     }
 
     mousePressed() {
-        // Check which button was clicked
-        if (this.buttons.beginJourney && this.isMouseOver(this.buttons.beginJourney)) {
-            this.cleanup();
-            currentScene = new Scene2();
-        }
+        // Scene 4 button
+        if (mouseX > width / 2 - 100 && mouseX < width / 2 + 100 &&
+            mouseY > height / 2 - 120 && mouseY < height / 2 - 70) {
+            // Remove all elements and clear canvas
+            removeElements();  // This will remove any p5 elements
+            clear();
+            background(0);
 
-        if (this.buttons.skipCinematic && this.isMouseOver(this.buttons.skipCinematic)) {
-            this.cleanup();
-            currentScene = new Scene3();  // Changed from Scene2 to Scene3
-        }
-
-        if (this.buttons.straightToMainBattle && this.isMouseOver(this.buttons.straightToMainBattle)) {
-            this.cleanup();
-            currentScene = new Scene6();
-        }
-
-        if (dist(mouseX, mouseY, this.soundPlayButton.x, this.soundPlayButton.y) < this.soundPlayButton.radius) {
-            this.soundPlayButton.isPlaying = !this.soundPlayButton.isPlaying;
-            if (this.soundPlayButton.isPlaying) {
-                // Start all sounds
-                if (this.sound) this.sound.play();
-            } else {
-                // Pause all sounds
-                if (this.sound) this.sound.pause();
+            // Force cleanup of any existing scenes
+            if (window.currentScene && window.currentScene.cleanup) {
+                window.currentScene.cleanup();
             }
+
+            setTimeout(() => {
+                window.location.href = 'scene4.html';
+            }, 100);
+        }
+
+        // Scene 5 button
+        if (mouseX > width / 2 - 100 && mouseX < width / 2 + 100 &&
+            mouseY > height / 2 - 40 && mouseY < height / 2 + 10) {
+            // Remove all elements and clear canvas
+            removeElements();  // This will remove any p5 elements
+            clear();
+            background(0);
+
+            // Force cleanup of any existing scenes
+            if (window.currentScene && window.currentScene.cleanup) {
+                window.currentScene.cleanup();
+            }
+
+            setTimeout(() => {
+                window.location.href = 'scene5.html';
+            }, 100);
         }
     }
 }
