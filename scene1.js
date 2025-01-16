@@ -281,7 +281,7 @@ class Scene1 {
         this.rainDrops = Array(400).fill().map(() => ({
             x: random(width),
             y: random(height),
-            speed: random(4, 12),  // Reduced from (6, 15) for slower rain
+            speed: random(6, 15),  // Back to original speed
             length: random(10, 20),
             opacity: random(50, 90)
         }));
@@ -299,7 +299,7 @@ class Scene1 {
         // Add dissolve effect properties
         this.dissolveStartTime = 0;
         this.dissolveProgress = 0;
-        this.dissolveDuration = 2000; // 2 seconds
+        this.dissolveDuration = 5000; // 2 seconds
 
         // 2. Modify thunder properties
         this.thunderGif = null;
@@ -307,9 +307,15 @@ class Scene1 {
         this.lastThunderTime = 0;
         this.thunderDuration = 2500;
         this.thunderDelay = 0;  // Remove fixed delay
-        this.thunderOpacity = 180;  // Lower opacity (0-255)
-        this.thunderBrightness = 1.2;  // Increase brightness
-        this.darknessThreshold = 0.6;  // Threshold for triggering thunder (0-1)
+        this.thunderPlayed = false;  // Keep this
+
+        this.playButton = {
+            x: windowWidth / 2,
+            y: windowHeight / 2 + 100,
+            width: 160,
+            height: 60,
+            text: "START"
+        };
     }
 
     preload() {
@@ -598,6 +604,104 @@ class Scene1 {
                 drop.x = (drop.x + drop.speed / 2) % width;
                 drop.y = (drop.y + drop.speed) % height;
             }
+
+            // Increase the darkness range of the pulsating overlay (0.4 to 0.8 instead of 0.3 to 0.6)
+            let overlayAlpha = map(sin(frameCount * 0.02), -1, 1, 0.2, 0.9);
+            drawingContext.globalCompositeOperation = 'source-over';
+            let gradient = drawingContext.createRadialGradient(
+                width / 2, height / 2, 0,
+                width / 2, height / 2, width * 0.8
+            );
+            gradient.addColorStop(0, `rgba(0, 0, 0, ${overlayAlpha})`);
+            gradient.addColorStop(0.7, `rgba(0, 0, 0, ${overlayAlpha + 0.15})`);
+            gradient.addColorStop(1, `rgba(0, 0, 0, ${overlayAlpha + 0.25})`);
+
+            drawingContext.fillStyle = gradient;
+            drawingContext.fillRect(0, 0, width, height);
+
+            // Show thunder when overlay is getting darker (threshold increased)
+            if (overlayAlpha > 0.65) {  // Increased from 0.45 to 0.65
+                let currentTime = millis();
+                if (currentTime - this.lastThunderTime > this.thunderDuration) {
+                    push();
+                    drawingContext.globalCompositeOperation = 'lighten';
+                    tint(255, 255);
+                    image(this.thunderGif, 0, -50, width, height + 100);
+                    tint(255, 25);
+                    image(this.thunder2Gif, 0, -50, width, height + 100);
+                    pop();
+
+                    this.lastThunderTime = currentTime;
+                }
+            }
+
+            // Only draw circle play button after 5 seconds
+            if (!this.stateStartTime) {
+                this.stateStartTime = millis();
+            }
+            let stateTime = millis() - this.stateStartTime;
+
+            if (stateTime > 5000) {
+                drawingContext.globalCompositeOperation = 'source-over';
+                let buttonSize = 50;
+                let buttonX = width - 50;
+                let buttonY = 50;
+                let isHovered = dist(mouseX, mouseY, buttonX, buttonY) < buttonSize / 2;
+
+                push();
+                if (isHovered) {
+                    // Hover state
+                    drawingContext.shadowBlur = 20;
+                    drawingContext.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                    drawingContext.shadowOffsetY = 4;
+
+                    // Inner shadow
+                    let gradient = drawingContext.createRadialGradient(
+                        buttonX, buttonY - 5, 0,  // Offset for 3D effect
+                        buttonX, buttonY, buttonSize / 2
+                    );
+                    gradient.addColorStop(0, '#5AA1E3');
+                    gradient.addColorStop(0.7, '#4A90E2');
+                    gradient.addColorStop(1, '#2171CD');
+                    drawingContext.fillStyle = gradient;
+                } else {
+                    // Rest state
+                    let gradient = drawingContext.createRadialGradient(
+                        buttonX, buttonY - 3, 0,
+                        buttonX, buttonY, buttonSize / 2
+                    );
+                    gradient.addColorStop(0, 'rgba(80, 80, 80, 0.9)');
+                    gradient.addColorStop(0.7, 'rgba(60, 60, 60, 0.9)');
+                    gradient.addColorStop(1, 'rgba(40, 40, 40, 0.9)');
+                    drawingContext.fillStyle = gradient;
+                }
+
+                noStroke();
+                circle(buttonX, buttonY, buttonSize);
+
+                // Draw play symbol with more padding and rounded edges
+                fill(255);
+                push();
+                translate(buttonX + 2, buttonY);  // Center offset
+                let triangleSize = buttonSize * 0.3;  // Smaller size ratio
+                beginShape();
+                vertex(-triangleSize / 2, -triangleSize / 2);
+                bezierVertex(
+                    -triangleSize / 2, -triangleSize / 2,
+                    -triangleSize / 2, triangleSize / 2,
+                    -triangleSize / 2, triangleSize / 2
+                );
+                vertex(triangleSize / 2, 0);
+                bezierVertex(
+                    triangleSize / 2, 0,
+                    -triangleSize / 2, -triangleSize / 2,
+                    -triangleSize / 2, -triangleSize / 2
+                );
+                endShape(CLOSE);
+                pop();
+            }
+
+            return;
         }
 
         if (this.state === 'reveal') {
@@ -771,11 +875,6 @@ class Scene1 {
                 drawingContext.shadowBlur = 155;
                 drawingContext.shadowColor = 'rgba(0, 150, 255, 0.7)';
             }
-
-            // Translucent gray circle
-            fill(128, 128, 128, 150);
-            noStroke();
-            circle(this.soundPlayButton.x, this.soundPlayButton.y, this.soundPlayButton.radius * 2);
 
             // Smaller play triangle or pause bars
             fill(255);
@@ -1094,6 +1193,8 @@ class Scene1 {
 
                 this.showInitialButton = false;
                 this.initialState = true;
+                this.state = 'initial_play';
+                return;
             }
             return;
         }
@@ -1160,6 +1261,25 @@ class Scene1 {
                 this.state = 'reveal';
                 this.showInitialButton = false;
                 return;
+            }
+        }
+
+        // In mousePressed(), add the START button handler:
+        if (this.state === 'reveal') {
+            if (this.playButton) {
+                let isHovered = mouseX > this.playButton.x - this.playButton.width / 2 &&
+                    mouseX < this.playButton.x + this.playButton.width / 2 &&
+                    mouseY > this.playButton.y - this.playButton.height / 2 &&
+                    mouseY < this.playButton.y + this.playButton.height / 2;
+
+                if (isHovered) {
+                    // Transition to artboard state (state 3)
+                    this.state = 'artboard';
+                    this.artboardState.x = width;  // Reset scroll position
+                    this.typewriterState.currentLine = 0;  // Reset typewriter
+                    this.textFadeStartTime = null;
+                    return;
+                }
             }
         }
     }
