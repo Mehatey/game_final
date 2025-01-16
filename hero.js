@@ -44,27 +44,37 @@ class Hero {
 
         let moving = false;
 
+        // Set sprite based on movement direction
+        if (keyIsDown(LEFT_ARROW) || keyIsDown(65) || keyIsDown(UP_ARROW) || keyIsDown(87)) {  // Left/Up arrow or 'A'/'W'
+            this.currentImage = this.images.still;
+            moving = true;
+        }
+        if (keyIsDown(RIGHT_ARROW) || keyIsDown(68) || keyIsDown(DOWN_ARROW) || keyIsDown(83)) {  // Right/Down arrow or 'D'/'S'
+            this.currentImage = this.images.left;
+            moving = true;
+        }
+
+        // Movement logic
         if (keyIsDown(LEFT_ARROW) || keyIsDown(65)) {  // Left arrow or 'A'
-            this.x = max(this.x - 5, 0);
+            this.x = max(this.x - this.speed, 0);
         }
         if (keyIsDown(RIGHT_ARROW) || keyIsDown(68)) {  // Right arrow or 'D'
-            this.x = min(this.x + 5, width);
+            this.x = min(this.x + this.speed, width);
         }
         if (keyIsDown(UP_ARROW) || keyIsDown(87)) {  // Up arrow or 'W'
-            this.y = max(this.y - 5, 0);
+            this.y = max(this.y - this.speed, 0);
         }
         if (keyIsDown(DOWN_ARROW) || keyIsDown(83)) {  // Down arrow or 'S'
-            this.y = min(this.y + 5, height);
+            this.y = min(this.y + this.speed, height);
         }
 
         if (!moving) {
-            this.direction = 'still';
             this.currentImage = this.images.still;
         }
 
         // Keep hero within canvas bounds, accounting for centered image
-        this.x = constrain(this.x, this.size/2, width - this.size/2);
-        this.y = constrain(this.y, this.size/2, height - this.size/2);
+        this.x = constrain(this.x, this.size / 2, width - this.size / 2);
+        this.y = constrain(this.y, this.size / 2, height - this.size / 2);
     }
 
     draw() {

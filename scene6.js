@@ -115,11 +115,11 @@ class Scene6 {
             }
         ];
 
-        // Initialize sounds properly
+        // Initialize sounds
         this.sounds = {
-            hurt: null,
-            doubt: null,
             castle: null,
+            doubt: null,
+            hurt: null,
             firing: null,
             button: null,
             glow: null
@@ -397,13 +397,13 @@ class Scene6 {
                     stroke(255, 255, 255, warpLine.alpha);
                     warpLine.x += warpLine.speed;
                     if (warpLine.x > width) warpLine.x = 0;
-                    
-                    let angle = atan2(height/2 - warpLine.y, width/2 - warpLine.x);
+
+                    let angle = atan2(height / 2 - warpLine.y, width / 2 - warpLine.x);
                     let startX = warpLine.x;
                     let startY = warpLine.y;
                     let endX = warpLine.x + cos(angle) * warpLine.length;
                     let endY = warpLine.y + sin(angle) * warpLine.length;
-                    
+
                     line(startX, startY, endX, endY);
                 }
                 pop();
@@ -419,37 +419,37 @@ class Scene6 {
 
                 push();
                 drawingContext.save();
-                
+
                 // Create portal shape
-                translate(width/2, height/2);
+                translate(width / 2, height / 2);
                 beginShape();
                 for (let a = 0; a < TWO_PI; a += 0.1) {
                     let xoff = map(cos(a + frameCount * 0.05), -1, 1, 0, 0.2);
                     let yoff = map(sin(a + frameCount * 0.05), -1, 1, 0, 0.2);
-                    let r = this.doorWidth/2;
+                    let r = this.doorWidth / 2;
                     let x = r * cos(a) + noise(xoff, yoff, frameCount * 0.02) * 20;
                     let y = r * sin(a) + noise(xoff, yoff + 5, frameCount * 0.02) * 20;
                     vertex(x, y);
                 }
                 endShape(CLOSE);
-                
+
                 // Add glow and portal effects
                 drawingContext.shadowBlur = 30;
                 drawingContext.shadowColor = 'rgba(0, 150, 255, 0.5)';
-                
+
                 drawingContext.restore();
                 pop();
 
                 // Draw portal edge effects
                 push();
-                translate(width/2, height/2);
+                translate(width / 2, height / 2);
                 noFill();
                 for (let i = 0; i < 3; i++) {
                     stroke(0, 150, 255, 255 - i * 50);
                     strokeWeight(3 - i);
                     beginShape();
                     for (let a = 0; a < TWO_PI; a += 0.1) {
-                        let r = this.doorWidth/2 + i * 5;
+                        let r = this.doorWidth / 2 + i * 5;
                         let x = r * cos(a);
                         let y = r * sin(a);
                         vertex(x, y);

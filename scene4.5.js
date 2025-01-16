@@ -1,6 +1,6 @@
-class Scene4_5 {
+class Scene4_5_js {
     constructor() {
-        console.log('Scene4_5 constructor started');
+        console.log('Scene4_5_js constructor started');
         try {
             this.hero = new Hero(width / 2, height / 2);
             this.hero.x = width / 2;
@@ -69,15 +69,6 @@ class Scene4_5 {
                 })
             };
 
-            // Add sound effects
-            this.typingSound = new Howl({
-                src: ['./assets/sounds/typing.mp3'],
-                volume: 0.3,
-                loop: true,
-                onload: () => console.log("Typing sound loaded"),
-                onloaderror: (id, err) => console.error("Error loading typing sound:", err)
-            });
-
             // Add new sound effects while keeping original paths
             this.screamSound = new Howl({
                 src: ['./assets/sounds/scream.mp3'],
@@ -117,9 +108,7 @@ class Scene4_5 {
                 { speaker: 'Hero', text: "Aaaaaaaahhhhhhhhhhhh why is their fire everywhere?!" },
                 { speaker: 'Hope', text: "Fire will not harm you here. It is the distractions you must fear." },
                 { speaker: 'Hero', text: "What distractions?" },
-                { speaker: 'Hope', text: "Distractions can make you feel good for a moment." },
-                { speaker: 'Hero', text: "What if I fail?" },
-                { speaker: 'Hope', text: "Failure is not trying. Now, survive!" }
+
             ];
             this.currentDialogue = 0;
             this.dialogueComplete = false;
@@ -162,15 +151,18 @@ class Scene4_5 {
             // Add new sounds
             this.heartbeatSound = new Howl({
                 src: ['./assets/sounds/heartbeat.mp3'],
-                volume: 0.8,
+                volume: 1.0,
                 loop: true,
-                onload: () => console.log("Heartbeat loaded")
+                onload: () => console.log("Heartbeat sound loaded"),
+                onloaderror: (id, err) => console.error("Error loading heartbeat sound:", err)
             });
 
-            this.wordgameSound = new Howl({
-                src: ['./assets/sounds/wordgame.mp3'],
+            this.gameSound = new Howl({
+                src: ['./assets/sounds/4.5game.mp3'],
                 volume: 0.5,
-                loop: true
+                loop: true,
+                onload: () => console.log("4.5game sound loaded"),
+                onloaderror: (id, err) => console.error("Error loading 4.5game sound:", err)
             });
 
             this.hurtSound = new Howl({
@@ -281,14 +273,22 @@ class Scene4_5 {
                 }
             });
 
-            console.log('Scene4_5 constructor completed');
+            // Add textbox sound
+            this.textboxSound = new Howl({
+                src: ['./assets/sounds/textbox.mp3'],
+                volume: 0.5,
+                onload: () => console.log("Textbox sound loaded"),
+                onloaderror: (id, err) => console.error("Error loading textbox sound:", err)
+            });
+
+            console.log('Scene4_5_js constructor completed');
         } catch (error) {
-            console.error('Error in Scene4_5 constructor:', error);
+            console.error('Error in Scene4_5_js constructor:', error);
         }
     }
 
     async preload() {
-        console.log('Scene4_5 preload started');
+        console.log('Scene4_5_js preload started');
         try {
             this.hopeSprite = await loadImage('assets/characters/hope.gif');
             console.log('Hope sprite loaded directly:', !!this.hopeSprite);
@@ -491,17 +491,20 @@ class Scene4_5 {
                         continue;
                     }
 
-                    // Draw distraction with correct size
+                    // Draw distraction with reduced size for 'computer' type
                     push();
                     translate(d.x, d.y);
                     rotate(d.rotation);
 
-                    // Add red glow effect
                     drawingContext.shadowBlur = 20 + sin(frameCount * 0.1) * 10;
                     drawingContext.shadowColor = 'rgba(255, 0, 0, 0.5)';
 
                     imageMode(CENTER);
-                    image(this.distractionImages[d.type], 0, 0, d.size, d.size);  // Use d.size for drawing
+                    if (d.type === 'computer') {
+                        image(this.distractionImages[d.type], 0, 0, d.size * 0.8, d.size * 0.8);  // Reduce size by 20%
+                    } else {
+                        image(this.distractionImages[d.type], 0, 0, d.size, d.size);
+                    }
                     pop();
 
                     // Check collision with hero
@@ -527,10 +530,13 @@ class Scene4_5 {
                 // Spawn distractions based on time elapsed
                 if (this.gameStarted) {
                     const timeElapsed = 45 - this.gameTimer;
-                    const spawnInterval = map(timeElapsed, 0, 45, 30, 15);
+
+                    // Adjust spawn interval to increase more slowly
+                    const spawnInterval = map(timeElapsed, 0, 45, 30, 12);  // Adjusted for 15% reduction
 
                     if (frameCount % floor(spawnInterval) === 0) {
-                        const numDistractions = floor(map(timeElapsed, 0, 20, 1, 5));  // Gradually increase
+                        // Adjust number of distractions to increase more slowly
+                        const numDistractions = floor(map(timeElapsed, 0, 45, 1, 4));  // Adjusted for 15% reduction
                         for (let i = 0; i < numDistractions; i++) {
                             this.addNewDistraction();
                         }
@@ -863,15 +869,17 @@ class Scene4_5 {
         this.hopeVisible = false;
 
         if (this.pokemonSiren) this.pokemonSiren.play();
+        if (this.gameSound) this.gameSound.play();
 
         setTimeout(() => {
             this.gameStarted = true;
             this.gameTimer = 45;
             this.lastSoundTime = 0;
             this.distractions = [];
+            this.dialogueComplete = true;  // Ensure dialogue is marked as complete
+            this.dialogueStarted = false;  // Reset dialogue state
 
             if (this.heartbeatSound) this.heartbeatSound.play();
-            if (this.wordgameSound) this.wordgameSound.play();
         }, 3000);
     }
 
@@ -1132,13 +1140,72 @@ class Scene4_5 {
     }
 
     resetGame() {
+        // Reset game state
         this.gameOver = false;
-        this.gameStarted = true;
+        this.gameStarted = false;  // Changed to false to ensure proper initialization
         this.gameTimer = 45;
         this.motivation = 100;
         this.specialPowerTime = 0;
         this.distractions = [];
         this.lastHitTime = millis();
         this.hero.visible = true;
+
+        // Reset dialogue system
+        this.dialogueBox = new DialogueBox();
+        this.currentDialogue = 0;
+        this.dialogueComplete = false;
+        this.dialogueStarted = false;
+
+        // Reset sound flags
+        this.hasPlayedScream = false;
+        this.soundStarted = false;
+        this.doubtSoundPlayed = false;
+
+        // Stop all active sounds
+        if (this.pokemonSiren && this.pokemonSiren.playing()) this.pokemonSiren.stop();
+        if (this.scarySound && this.scarySound.playing()) this.scarySound.stop();
+        if (this.heartbeatSound && this.heartbeatSound.playing()) this.heartbeatSound.stop();
+        if (this.gameSound && this.gameSound.playing()) this.gameSound.stop();
+
+        // Reset positions
+        this.hero.x = width / 2;
+        this.hero.y = height / 2;
+        this.hope.x = width - 200;
+        this.hope.y = height / 2;
+        this.hopeVisible = true;
+
+        // Reset overlay and timing
+        this.flashOverlay.active = false;
+        this.flashOverlay.alpha = 0;
+        this.lastSoundTime = 0;
+        this.doorStartTime = null;
+
+        // Start the game sequence again
+        this.startGame();
+    }
+
+    showDialogueBox() {
+        // Play textbox sound when a new dialogue box is shown
+        if (this.textboxSound) this.textboxSound.play();
+
+        // Logic to display the dialogue box
+        // ... existing code for displaying dialogue ...
+    }
+
+    drawDistractions() {
+        for (let distraction of this.distractions) {
+            push();
+            imageMode(CENTER);
+
+            if (distraction.type === 'burger') {
+                // Increase the size of the burger
+                image(this.distractionImages.burger, distraction.x, distraction.y, 120, 120);  // Adjusted size
+            } else {
+                // Default size for other distractions
+                image(this.distractionImages[distraction.type], distraction.x, distraction.y, 100, 100);
+            }
+
+            pop();
+        }
     }
 }
