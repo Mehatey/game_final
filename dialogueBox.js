@@ -9,7 +9,7 @@ class DialogueBox {
         this.charIndex = 0;
         this.isTyping = false;
         this.typewriterSpeed = 2;
-        this.displayDuration = 600;
+        this.displayDuration = 400;
         this.timer = 0;
         this.opacity = 255;
         this.speakerName = "";
@@ -40,6 +40,11 @@ class DialogueBox {
         this.minWidth = 400;
         this.maxWidth = width - 10;
         this.namePadding = 25;
+        this.typingSpeed = 50;  // Increased from 30 for slower typing
+        this.fastTypingSpeed = 2; // Reduced from 4 to 2 for fast typing
+        this.fadeOutTimer = 0;
+        this.fadeOutDuration = 60;  // Frames to fade out
+        this.typeInterval = 50;  // Increase this value to slow down typing (was likely 30 or less)
 
         // Initialize typing sound
         this.typingSound = new Howl({
@@ -102,24 +107,23 @@ class DialogueBox {
     }
 
     update() {
-        if (this.isTyping) {
-            this.timer++;
-            if (this.timer > this.typewriterSpeed) {
-                this.timer = 0;
-                if (this.charIndex < this.targetText.length) {
-                    this.currentText += this.targetText.charAt(this.charIndex);
-                    this.charIndex++;
-                } else {
-                    this.isTyping = false;
-                    if (this.typingSound) {
-                        this.typingSound.stop();
-                    }
-                }
+        if (this.isComplete() && this.currentText !== "") {
+            this.fadeOutTimer++;
+            if (this.fadeOutTimer >= this.fadeOutDuration) {
+                this.currentText = "";
+                this.fadeOutTimer = 0;
             }
+        }
+        if (this.isTyping && frameCount % this.typewriterSpeed === 0) {
+            this.charIndex += 1;
 
-            // Stop typing sound when done
+            // Update currentText from targetText based on charIndex
+            this.currentText = this.targetText.substring(0, this.charIndex);
+
             if (this.charIndex >= this.targetText.length) {
                 this.isTyping = false;
+                this.charIndex = this.targetText.length;
+                this.currentText = this.targetText;
                 if (this.typingSound) {
                     this.typingSound.stop();
                 }
@@ -130,7 +134,7 @@ class DialogueBox {
     isComplete() {
         if (!this.isTyping && this.currentText === this.targetText) {
             this.timer++;
-            return this.timer > 60;  // 60 frames = 1 second delay
+            return this.timer > 60;
         }
         return false;
     }
@@ -139,6 +143,10 @@ class DialogueBox {
         if (!this.currentText) return;
 
         push();
+        let alpha = 255;
+        if (this.fadeOutTimer > 0) {
+            alpha = map(this.fadeOutTimer, 0, this.fadeOutDuration, 255, 0);
+        }
 
         // Calculate text width and box size
         textSize(this.textSize);

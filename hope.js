@@ -1,8 +1,9 @@
 class Hope {
     constructor() {
-        this.x = width / 2;
-        this.y = -100;
-        this.size = 0;
+        this.x = width / 2 + 100;
+        this.y = height / 2;
+        this.sprite = null;
+        this.size = 100; // Add explicit size
         this.targetSize = 160;
         this.glowIntensity = 0;
         this.visible = false;
@@ -40,23 +41,10 @@ class Hope {
 
     async preload() {
         try {
-            console.log('Starting Hope preload...');
-            // Keep the correct path in characters folder
-            this.sprite = await loadImage('assets/characters/hope.gif');
-            this.portrait = await loadImage('assets/characters/hope.gif');
-            console.log('Hope images loaded:', !!this.sprite, !!this.portrait);
-
-            // Generate fly path points
-            for (let i = 0; i < 5; i++) {
-                this.flyPath.push({
-                    x: random(width * 0.2, width * 0.8),
-                    y: random(height * 0.2, height * 0.8)
-                });
-            }
+            this.sprite = await loadImage('./assets/characters/hope.gif');
+            console.log("Hope sprite loaded"); // Debug log
         } catch (error) {
-            console.error('Error loading Hope images:', error);
-            console.error('Current image paths:', 'assets/characters/hope.gif');
-            throw error;
+            console.error("Error loading Hope sprite:", error);
         }
     }
 
@@ -133,13 +121,14 @@ class Hope {
     }
 
     draw() {
-        if (!this.visible) return;
-
-        push();
-        tint(255, this.alpha); // Apply fade effect
-        imageMode(CENTER);
-        image(this.sprite, this.x, this.y, this.size, this.size);
-        pop();
+        if (this.sprite) {
+            push();
+            imageMode(CENTER);
+            image(this.sprite, this.x, this.y, this.size, this.size);
+            pop();
+        } else {
+            console.error("Hope sprite not loaded"); // Debug log
+        }
     }
 
     startEntry() {

@@ -6,17 +6,17 @@ class Scene4_5 {
             this.hero.visible = false;
             this.background = null;
             this.assetsLoaded = false;
-            
+
             // Log initial setup
             console.log('Basic initialization complete');
-            
+
             // Portal transition properties
             this.doorWidth = 0;
             this.doorStartTime = null;
             this.doorDuration = 4000;
             this.doorOpening = true;
             this.transitionComplete = false;
- 
+
             // Unified cannon properties (keep only one set)
             this.cannonActive = false;
             this.cannonPosition = createVector(0, 0);
@@ -94,24 +94,20 @@ class Scene4_5 {
 
             // Add Hope and DialogueBox
             this.hope = new Hope();
-            this.hope.x = width - 200;  // Set initial position explicitly
-            this.hope.y = height / 2;
+            this.hope.x = 80;  // Same position as scene4.5
+            this.hope.y = 60;  // Same position as scene4.5
+            this.hopeMovement = {
+                angle: 0,
+                radius: 10  // Same small radius
+            };
             this.hopeVisible = false;
             this.dialogueBox = new DialogueBox();
 
-            // Add dialogue sequence
-            this.dialogues = [
-                { speaker: 'Hope', text: "Hero, welcome to the forge of focus." },
-                { speaker: 'Hero', text: "Aaaaaaaahhhhhhhhhhhh why is their fire everywhere?!" },
-                { speaker: 'Hope', text: "Fire will not harm you here. It is the distractions you must fear." },
-                { speaker: 'Hero', text: "What distractions?" },
-                { speaker: 'Hope', text: "Distractions can make you feel good for a moment." },
-                { speaker: 'Hero', text: "What if I fail?" },
-                { speaker: 'Hope', text: "Failure is not trying. Now, survive!" }
-            ];
-            this.currentDialogue = 0;
-            this.dialogueComplete = false;
-            this.dialogueStarted = false;
+            // Remove in-game dialogue sequences
+            this.gameDialogues = [];  // Empty array instead of battle dialogues
+            this.currentGameDialogue = 0;
+            this.gameDialogueTimer = 0;
+            this.gameDialogueActive = false;
 
             // Game properties
             this.gameStarted = false;
@@ -136,12 +132,6 @@ class Scene4_5 {
                     alpha: random(100, 255)
                 });
             }
-
-            // Hope movement properties
-            this.hopeMovement = {
-                angle: 0,
-                radius: 30
-            };
 
             // Flag for initial scream
             this.hasPlayedScream = false;
@@ -199,7 +189,7 @@ class Scene4_5 {
             // Load other assets
             this.background = await loadImage('assets/backgrounds/burning.gif');
             await this.hero.preload();
-            
+
             // Load distraction gifs
             this.distractionImages.burger = await loadImage('assets/distractions/burger.gif');
             this.distractionImages.computer = await loadImage('assets/distractions/computer.gif');
@@ -221,13 +211,13 @@ class Scene4_5 {
 
     draw() {
         console.log('Draw called, assets loaded:', this.assetsLoaded);
-        
+
         if (!this.assetsLoaded) {
             // Draw loading screen
             background(0);
             fill(255);
             textAlign(CENTER, CENTER);
-            text('Loading...', width/2, height/2);
+            text('Loading...', width / 2, height / 2);
             return;
         }
 
@@ -314,15 +304,6 @@ class Scene4_5 {
                 this.transitionComplete = true;
                 this.hopeVisible = true;
                 this.hero.visible = true;
-
-                // Start the dialogue
-                if (!this.dialogueStarted) {
-                    this.dialogueStarted = true;
-                    this.dialogueBox.startDialogue(
-                        this.dialogues[this.currentDialogue].text,
-                        this.dialogues[this.currentDialogue].speaker
-                    );
-                }
             }
         } else if (this.transitionComplete) {
             // Draw full background
@@ -331,10 +312,10 @@ class Scene4_5 {
         }
 
         // Draw Hope with floating movement
-        if (this.hopeVisible && !this.dialogueComplete) {
+        if (this.hopeVisible) {
             this.hopeMovement.angle += 0.02;
-            let floatX = width - 200 + cos(this.hopeMovement.angle) * this.hopeMovement.radius;
-            let floatY = height / 2 + sin(this.hopeMovement.angle) * this.hopeMovement.radius;
+            let floatX = 80 + cos(this.hopeMovement.angle) * this.hopeMovement.radius;
+            let floatY = 60 + sin(this.hopeMovement.angle) * this.hopeMovement.radius;
 
             this.hope.x = floatX;
             this.hope.y = floatY;
@@ -345,33 +326,6 @@ class Scene4_5 {
         if (this.hero.visible) {
             this.hero.update();
             this.hero.draw();
-        }
-
-        // Handle dialogue
-        if (this.transitionComplete && !this.dialogueComplete) {
-            this.dialogueBox.update();
-            this.dialogueBox.draw();
-
-            // Play scream when Hero's first dialogue starts
-            if (this.currentDialogue === 1 && !this.hasPlayedScream) {  // Index 1 is Hero's "Aaaaaaaahhhhhhhhhhhh" dialogue
-                this.screamSound.play();
-                this.hasPlayedScream = true;
-            }
-
-            // Check if current dialogue is complete
-            if (this.dialogueBox.isComplete()) {
-                this.currentDialogue++;
-                if (this.currentDialogue < this.dialogues.length) {
-                    this.dialogueBox.startDialogue(
-                        this.dialogues[this.currentDialogue].text,
-                        this.dialogues[this.currentDialogue].speaker
-                    );
-                } else {
-                    this.dialogueComplete = true;
-                    this.hopeVisible = false;
-                    this.startGame();
-                }
-            }
         }
 
         // Game Logic
@@ -387,7 +341,7 @@ class Scene4_5 {
 
             // Update timer
             if (this.gameTimer > 0) {
-                this.gameTimer -= deltaTime / 1000; // Convert to seconds
+                this.gameTimer -= deltaTime / 1000;
 
                 // Play random distraction sound every 5 seconds
                 if (millis() - this.lastSoundTime > this.soundInterval) {
@@ -397,9 +351,11 @@ class Scene4_5 {
                     this.lastSoundTime = millis();
                 }
 
-                // Add new distractions based on time
-                if (frameCount % (60 - floor(map(45 - this.gameTimer, 0, 45, 0, 30))) === 0) {
-                    this.addNewDistraction();
+                // Much less frequent spawning - every 4 seconds
+                if (frameCount % 240 === 0) {  // Changed from 150 to 240
+                    if (this.distractions.length < 3) {  // Reduced max from 5 to 3
+                        this.addNewDistraction();
+                    }
                 }
             } else {
                 // Game complete!
@@ -441,7 +397,7 @@ class Scene4_5 {
 
             // Update special power
             this.updateSpecialPowerBar();
-            
+
             // Draw bars
             this.drawMotivationBar();
             this.drawSpecialPowerBar();
@@ -476,15 +432,9 @@ class Scene4_5 {
         if (key === ' ') {
             this.activateCannon();
         }
-        
+
         if (this.gameStarted) {
-            // Add special power activation
-            if (key === 's' && this.specialPowerTime >= 15000) {
-                this.specialPowerTime = 0;
-                // Add special power effect here
-            }
-            
-            const speed = 8;
+            const speed = 60;  // Increased to 60 for very fast movement
             if (keyCode === LEFT_ARROW || key === 'a') {
                 this.hero.velocity.x = -speed;
             }
@@ -599,20 +549,33 @@ class Scene4_5 {
     }
 
     addNewDistraction() {
-        const types = ['burger', 'computer', 'beer'];
+        const types = ['burger', 'computer', 'fourLoko'];
         const type = random(types);
         const angle = random(TWO_PI);
         const speed = random(2, 5);
 
-        this.distractions.push({
-            type: type,
-            x: random(width),
-            y: random(height),
-            size: 120,  // Doubled size
-            velocity: createVector(cos(angle) * speed, sin(angle) * speed),
-            rotation: 0,
-            rotationSpeed: random(-0.05, 0.05)
-        });
+        // Much smaller sizes for distractions
+        let size;
+        if (type === 'computer') {
+            size = 80;  // Half size for computer
+        } else if (type === 'fourLoko') {
+            size = 90;  // Smaller fourLoko
+        } else {
+            size = 100;  // Smaller burger
+        }
+
+        // Only add if we don't have too many
+        if (this.distractions.length < 12) {  // Cap total distractions
+            this.distractions.push({
+                type: type,
+                x: random(width),
+                y: random(height),
+                size: size,
+                velocity: createVector(cos(angle) * speed, sin(angle) * speed),
+                rotation: 0,
+                rotationSpeed: random(-0.05, 0.05)
+            });
+        }
 
         // Play sounds in sequence
         if (millis() - this.lastSoundTime > 5000) {
@@ -638,14 +601,13 @@ class Scene4_5 {
             this.lastSoundTime = 0;
             this.distractions = [];
 
+            // Start with fewer distractions
+            this.addNewDistraction();
+            this.addNewDistraction();  // Reduced from 3 to 2 initial distractions
+
             // Start other game sounds after flash
             this.heartbeatSound.play();
             this.wordgameSound.play();
-
-            // Initial distractions
-            this.addNewDistraction();
-            this.addNewDistraction();
-            this.addNewDistraction();
         }, 3000);
     }
 

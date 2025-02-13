@@ -114,13 +114,16 @@ class Scene3 {
         // Add wordgame sound
         this.wordgameSound = null;
 
+        // Add joker sound
+        this.jokerSound = null;
+
         // Call preload immediately
         this.preload();
 
         this.doorWidth = 0;
         this.doorHeight = windowHeight;
         this.doorStartTime = millis();
-        this.doorDuration = 4000; // 4 seconds
+        this.doorDuration = 0; // 4 seconds
         this.doorOpening = true;
         this.doorGlow = 0;
         this.warpLines = [];
@@ -133,6 +136,29 @@ class Scene3 {
                 alpha: random(100, 255)
             });
         }
+
+        this.heroSpeed = 8;  // Increased from default speed (usually 5)
+        this.typingSpeed = 2;  // Decreased from 3 for faster typing
+
+        // In constructor, add Hope entry animation properties
+        this.hopeEntryAnimation = {
+            active: false,
+            duration: Infinity,  // Animation continues until Hope leaves
+            startTime: 0,
+            glowRadius: 0,
+            glowOpacity: 0,
+            pulseSpeed: 0.8,
+            rotationSpeed: 0.5
+        };
+
+        this.hopeParticles = [];  // Add particle array
+
+        this.hopeBackgroundEffect = {
+            active: false,
+            opacity: 0,
+            dissolveStart: false,
+            targetOpacity: 180  // Increased brightness
+        };
     }
 
     preload() {
@@ -182,96 +208,54 @@ class Scene3 {
             onload: () => console.log("Wordgame sound loaded"),
             onloaderror: (id, err) => console.error("Error loading wordgame sound:", err)
         });
+
+        // Add joker sound
+        this.jokerSound = new Howl({
+            src: ['./assets/sounds/joker.mp3'],
+            volume: 0.5,
+            loop: true,
+            onload: () => console.log("Joker sound loaded"),
+            onloaderror: (id, err) => console.error("Error loading joker sound:", err)
+        });
     }
 
     draw() {
-        if (this.doorOpening) {
-            let elapsed = millis() - this.doorStartTime;
-            if (elapsed > 0) {
-                // Draw warp speed effect
-                push();
-                strokeWeight(2);
-                for (let warpLine of this.warpLines) {
-                    stroke(255, 255, 255, warpLine.alpha);
-                    warpLine.x += warpLine.speed;
-                    if (warpLine.x > width) warpLine.x = 0;
-                    
-                    let angle = atan2(height/2 - warpLine.y, width/2 - warpLine.x);
-                    let startX = warpLine.x;
-                    let startY = warpLine.y;
-                    let endX = warpLine.x + cos(angle) * warpLine.length;
-                    let endY = warpLine.y + sin(angle) * warpLine.length;
-                    
-                    line(startX, startY, endX, endY);
-                }
-                pop();
-
-                // Calculate portal size
-                this.doorWidth = map(
-                    elapsed,
-                    0,
-                    this.doorDuration,
-                    0,
-                    windowWidth * 0.7
-                );
-
-                push();
-                drawingContext.save();
-                
-                // Create portal shape
-                translate(width/2, height/2);
-                beginShape();
-                for (let a = 0; a < TWO_PI; a += 0.1) {
-                    let xoff = map(cos(a + frameCount * 0.05), -1, 1, 0, 0.2);
-                    let yoff = map(sin(a + frameCount * 0.05), -1, 1, 0, 0.2);
-                    let r = this.doorWidth/2;
-                    let x = r * cos(a) + noise(xoff, yoff, frameCount * 0.02) * 20;
-                    let y = r * sin(a) + noise(xoff, yoff + 5, frameCount * 0.02) * 20;
-                    vertex(x, y);
-                }
-                endShape(CLOSE);
-                
-                // Add glow and portal effects
-                drawingContext.shadowBlur = 30;
-                drawingContext.shadowColor = 'rgba(0, 150, 255, 0.5)';
-                
-                drawingContext.restore();
-                pop();
-
-                // Draw portal edge effects
-                push();
-                translate(width/2, height/2);
-                noFill();
-                for (let i = 0; i < 3; i++) {
-                    stroke(0, 150, 255, 255 - i * 50);
-                    strokeWeight(3 - i);
-                    beginShape();
-                    for (let a = 0; a < TWO_PI; a += 0.1) {
-                        let r = this.doorWidth/2 + i * 5;
-                        let x = r * cos(a);
-                        let y = r * sin(a);
-                        vertex(x, y);
-                    }
-                    endShape(CLOSE);
-                }
-                pop();
-
-                if (elapsed >= this.doorDuration) {
-                    this.doorOpening = false;
-                }
-            }
-        }
-
-        // Create dark gradient background
+        // Create dark gradient background first
         let c1 = color(0, 0, 0);      // Pure black
         let c2 = color(40, 40, 40);   // Dark gray
-        
+
         // Draw gradient
-        for(let y = 0; y < height; y++) {
+        for (let y = 0; y < height; y++) {
             let inter = map(y, 0, height, 0, 1);
             let c = lerpColor(c1, c2, inter);
             stroke(c);
             line(0, y, width, y);
+        }
+
+        // Draw yellow background effect immediately after gradient
+        if (this.hopeBackgroundEffect.active) {
+            push();
+            if (!this.hopeBackgroundEffect.dissolveStart) {
+                this.hopeBackgroundEffect.opacity = min(
+                    this.hopeBackgroundEffect.opacity + 3,
+                    this.hopeBackgroundEffect.targetOpacity
+                );
+            } else {
+                this.hopeBackgroundEffect.opacity = max(
+                    this.hopeBackgroundEffect.opacity - 3,
+                    0
+                );
+
+                if (this.hopeBackgroundEffect.opacity <= 0) {
+                    this.hopeBackgroundEffect.active = false;
+                }
+            }
+
+            // Draw the background with current opacity
+            noStroke();
+            fill(255, 255, 0, this.hopeBackgroundEffect.opacity);
+            rect(0, 0, width, height);
+            pop();
         }
 
         if (!this.assetsLoaded) {
@@ -296,8 +280,8 @@ class Scene3 {
                 if (this.hopeEntered) {
                     this.hope.update();
                     let time = millis() * 0.001;
-                    this.hope.x = width / 2 + sin(time) * 100;
-                    this.hope.y = height / 2 + cos(time) * 50;
+                    this.hope.x = width * 0.25 + sin(time) * 50;
+                    this.hope.y = height / 2 + cos(time) * 25;
                     this.hope.draw();
                 }
 
@@ -307,8 +291,14 @@ class Scene3 {
                     if (currentDialogue.startHopeEntry && !this.hopeEntered) {
                         this.hope.startEntry();
                         this.hopeEntered = true;
+                        this.hopeEntryAnimation.active = true;
+                        this.hopeBackgroundEffect.active = true;  // Activate background effect
                         if (this.hopeEntrySound) {
                             this.hopeEntrySound.play();
+                            // Start dissolve when music ends
+                            this.hopeEntrySound.once('end', () => {
+                                this.hopeBackgroundEffect.dissolveStart = true;
+                            });
                         }
                     }
 
@@ -326,76 +316,130 @@ class Scene3 {
                 // Move to playing state when dialogues are done
                 this.dialogueState = 'playing';
                 this.hope.startFadeOut();
+                this.hopeEntered = false;
+                this.hopeEntryAnimation.active = false;
+
+                // Start joker sound when transitioning to word game
+                if (this.jokerSound) {
+                    this.jokerSound.play();
+                    this.jokerSound.volume(0.5);  // Adjust volume if needed
+                }
+
+                // Start wordgame sound
+                if (this.wordgameSound) {
+                    this.wordgameSound.play();
+                }
             }
         } else if (this.dialogueState === 'playing') {
-            // Start wordgame sound when entering playing state
-            if (!this.gameStarted) {
-                this.wordgameSound.play();
-                this.gameStarted = true;
-            }
-            
-            this.hero.update();
-            this.hero.draw();
+            // Check for game completion first
+            if (this.gameTimer <= 0 && !this.showRetryPrompt) {
+                // Player won! Stop all gameplay and show victory screen
+                this.gameCompleted = true;
+                this.words = [];  // Clear all words
 
-            // Only draw words if not showing retry prompt
-            if (!this.showRetryPrompt) {
+                // Draw victory screen
+                push();
+                fill(0, 0, 0, 200);
+                rect(0, 0, width, height);
+
+                textAlign(CENTER, CENTER);
+                fill(255);
+                textSize(32);
+                text("You survived!", width / 2, height / 2 - 40);
+                textSize(24);
+                text("Click anywhere to continue...", width / 2, height / 2 + 40);
+                pop();
+
+                // Stop wordgame sound
+                if (this.wordgameSound && this.wordgameSound.playing()) {
+                    this.wordgameSound.stop();
+                }
+
+                // Stop joker sound
+                if (this.jokerSound) {
+                    this.jokerSound.stop();
+                }
+
+                return;  // Exit the draw loop here to prevent further game updates
+            }
+
+            // Only continue with game logic if not completed
+            if (!this.gameCompleted) {
+                this.hero.update();
+                this.hero.draw();
+
                 // Update and check words
                 for (let i = this.words.length - 1; i >= 0; i--) {
                     let word = this.words[i];
                     word.update();
                     word.draw();
 
-                    if (abs(word.x - this.hero.x) < 30 && abs(word.y - this.hero.y) < 30) {
-                        if (this.hurtSound) {
-                            this.hurtSound.play();
-                        }
+                    if (this.checkCollision(word)) {
+                        if (this.hurtSound) this.hurtSound.play();
+                        if (this.wordgameSound) this.wordgameSound.stop();
+                        if (this.jokerSound) this.jokerSound.stop();
                         this.showRetryPrompt = true;
                         this.currentHopeQuote = random(this.hopeQuotes);
                         this.words = [];
-                        break;  // Exit loop when hit
+                        break;
                     }
                 }
 
-                // Maintain fewer words (reduced from 35 to 20)
-                if (this.words.length < 20) {
-                    let word = this.negativeWords[floor(random(this.negativeWords.length))];
-                    let spawnSide = floor(random(4));
-                    let x, y;
+                // Draw timer
+                push();
+                textAlign(CENTER, CENTER);
+                textSize(32);
+                fill(255);
+                text(ceil(this.gameTimer), width / 2, 50);
+                pop();
 
-                    switch (spawnSide) {
-                        case 0: // top
-                            x = random(width);
-                            y = -50;
-                            break;
-                        case 1: // right
-                            x = width + 50;
-                            y = random(height);
-                            break;
-                        case 2: // bottom
-                            x = random(width);
-                            y = height + 50;
-                            break;
-                        case 3: // left
-                            x = -50;
-                            y = random(height);
-                            break;
-                    }
-
-                    this.words.push(new Word(word, x, y));
+                // Update timer
+                if (frameCount % 60 === 0 && this.gameTimer > 0) {
+                    this.gameTimer--;
                 }
-            }
 
-            // Draw timer
-            push();
-            textAlign(CENTER, CENTER);
-            textSize(32);
-            fill(255);
-            text(ceil(this.gameTimer), width / 2, 50);
-            pop();
+                // Only spawn new words if game is still active
+                if (this.words.length < 17 && this.gameTimer > 0) {
+                    if (random() < 0.8) {
+                        let word = this.negativeWords[floor(random(this.negativeWords.length))];
+                        let spawnSide = floor(random(4));
+                        let x, y, angle;
 
-            // Update timer
-            if (frameCount % 60 === 0 && this.gameTimer > 0) {
-                this.gameTimer--;
+                        switch (spawnSide) {
+                            case 0: // top
+                                x = random(width);
+                                y = -50;
+                                angle = random(PI / 4, 3 * PI / 4);
+                                break;
+                            case 1: // right
+                                x = width + 50;
+                                y = random(height);
+                                angle = random(3 * PI / 4, 5 * PI / 4);
+                                break;
+                            case 2: // bottom
+                                x = random(width);
+                                y = height + 50;
+                                angle = random(5 * PI / 4, 7 * PI / 4);
+                                break;
+                            case 3: // left
+                                x = -50;
+                                y = random(height);
+                                angle = random(-PI / 4, PI / 4);
+                                break;
+                        }
+
+                        // Create word with direction toward center
+                        let newWord = new Word(word, x, y);
+                        let centerX = width / 2;
+                        let centerY = height / 2;
+                        let dx = centerX - x;
+                        let dy = centerY - y;
+                        let dist = Math.sqrt(dx * dx + dy * dy);
+                        newWord.velocityX = (dx / dist) * 1.5;
+                        newWord.velocityY = (dy / dist) * 1.5;
+                        this.words.push(newWord);
+                    }
+                }
             }
 
             // Draw retry prompt if active
@@ -428,25 +472,82 @@ class Scene3 {
                 text("Retry", width / 2, height / 2 + 60);
                 pop();
             }
+        }
 
-            // Check for game completion (after timer update)
-            if (this.gameTimer <= 0 && !this.showRetryPrompt) {
-                // Player survived! Transition to Scene 4
+        // Draw Hope's entry animation BEFORE drawing Hope
+        if (this.hopeEntered && this.hopeEntryAnimation.active) {
+            push();
+            let time = millis() * 0.001;
+
+            // More dynamic glow effects with reduced size
+            let baseRadius = 70;  // Reduced from 100
+            let pulseSpeed = 2;
+            let rotationSpeed = 0.5;
+
+            // Draw multiple layers of circles with different behaviors
+            for (let i = 0; i < 12; i++) {
+                let t = time + i * 0.3;
+                let pulseFactor = sin(t * pulseSpeed) * 0.3 + 0.7;
+                let radius = baseRadius * (1 + i * 0.15) * pulseFactor;  // Reduced multiplier from 0.2 to 0.15
+                let alpha = map(sin(t * 1.5), -1, 1, 0.2, 0.8);
+
+                // Add some chaos to the rotation
+                let rotation = time * rotationSpeed + noise(t * 0.5, i) * TWO_PI;
+
+                // Alternate between blue and white with varying opacity
+                let isBlue = i % 2 === 0;
+                let glowColor = isBlue ?
+                    `rgba(0, 100, 255, ${alpha})` :
+                    `rgba(255, 255, 255, ${alpha})`;
+
                 push();
-                fill(0, 0, 0, 200);
-                rect(0, 0, width, height);
+                translate(this.hope.x, this.hope.y);
+                rotate(rotation);
 
-                textAlign(CENTER, CENTER);
-                fill(255);
-                textSize(32);
-                text("You survived!", width / 2, height / 2 - 40);
-                textSize(24);
-                text("Click anywhere to continue...", width / 2, height / 2 + 40);
+                // Draw main circle
+                noFill();
+                stroke(glowColor);
+                strokeWeight(2 + noise(t, i) * 2);
+                drawingContext.shadowBlur = 30 + noise(t * 2, i) * 20;
+                drawingContext.shadowColor = glowColor;
+
+                // Add distortion to circle shape
+                beginShape();
+                for (let a = 0; a < TWO_PI; a += 0.2) {
+                    let xoff = map(cos(a), -1, 1, 0, 0.5);
+                    let yoff = map(sin(a), -1, 1, 0, 0.5);
+                    let r = radius * (1 + noise(xoff, yoff, t * 0.5) * 0.2);
+                    let x = r * cos(a);
+                    let y = r * sin(a) * 0.8; // Slightly elliptical
+                    vertex(x, y);
+                }
+                endShape(CLOSE);
+
+                // Add radiating particles occasionally
+                if (frameCount % 3 === 0 && random() < 0.2) {
+                    let particleAngle = random(TWO_PI);
+                    let particleRadius = radius * random(0.6, 0.9);
+                    this.hopeParticles.push(new HopeParticle(
+                        this.hope.x + cos(particleAngle) * particleRadius,
+                        this.hope.y + sin(particleAngle) * particleRadius,
+                        particleAngle
+                    ));
+                }
                 pop();
-
-                // Add flag to track completion
-                this.gameCompleted = true;
             }
+            pop();
+
+            // Update and draw particles
+            this.hopeParticles = this.hopeParticles.filter(particle => {
+                let isAlive = particle.update();
+                if (isAlive) particle.draw();
+                return isAlive;
+            });
+        }
+
+        // Draw Hope after the entry animation
+        if (this.hopeEntered) {
+            this.hope.draw();
         }
     }
 
@@ -521,31 +622,44 @@ class Scene3 {
                     this.showRetryPrompt = false;  // Hide retry prompt
 
                     // Spawn initial set of words
-                    for (let i = 0; i < 20; i++) {  // Start with 20 words
+                    for (let i = 0; i < 14; i++) {  // Increased from 12 to 14 initial words
                         let word = this.negativeWords[floor(random(this.negativeWords.length))];
                         let spawnSide = floor(random(4));
-                        let x, y;
+                        let x, y, angle;
 
                         switch (spawnSide) {
                             case 0: // top
                                 x = random(width);
                                 y = -50;
+                                angle = random(PI / 4, 3 * PI / 4);  // Angle downward
                                 break;
                             case 1: // right
                                 x = width + 50;
                                 y = random(height);
+                                angle = random(3 * PI / 4, 5 * PI / 4);  // Angle leftward
                                 break;
                             case 2: // bottom
                                 x = random(width);
                                 y = height + 50;
+                                angle = random(5 * PI / 4, 7 * PI / 4);  // Angle upward
                                 break;
                             case 3: // left
                                 x = -50;
                                 y = random(height);
+                                angle = random(-PI / 4, PI / 4);  // Angle rightward
                                 break;
                         }
 
-                        this.words.push(new Word(word, x, y));
+                        // Create word with direction toward center
+                        let newWord = new Word(word, x, y);
+                        let centerX = width / 2;
+                        let centerY = height / 2;
+                        let dx = centerX - x;
+                        let dy = centerY - y;
+                        let dist = Math.sqrt(dx * dx + dy * dy);
+                        newWord.velocityX = (dx / dist) * 1.5;  // Reduced from 2 to 1.5
+                        newWord.velocityY = (dy / dist) * 1.5;  // Reduced from 2 to 1.5
+                        this.words.push(newWord);
                     }
                 }
             } else if (this.gameCompleted) {
@@ -584,11 +698,11 @@ class Scene3 {
         if (this.dialogueBox && this.dialogueBox.typingSound) {
             this.dialogueBox.typingSound.stop();
         }
-        
+
         if (this.hurtSound) {
             this.hurtSound.stop();
         }
-        
+
         if (this.scarySound) {
             this.scarySound.stop();
         }
@@ -609,5 +723,100 @@ class Scene3 {
             this.wordgameSound.stop();
             this.wordgameSound.unload();
         }
+
+        // Add joker sound cleanup
+        if (this.jokerSound) {
+            this.jokerSound.stop();
+            this.jokerSound.unload();
+        }
+    }
+
+    checkCollision(word) {
+        // Get hero hitbox (using hero's actual size)
+        let heroHitbox = {
+            left: this.hero.x - this.hero.size / 3,    // Use 1/3 of hero size for tighter hitbox
+            right: this.hero.x + this.hero.size / 3,
+            top: this.hero.y - this.hero.size / 3,
+            bottom: this.hero.y + this.hero.size / 3
+        };
+
+        // Get word hitbox
+        let wordWidth = textWidth(word.text);
+        let wordHeight = textAscent() + textDescent();
+        let wordHitbox = {
+            left: word.x - wordWidth / 2,
+            right: word.x + wordWidth / 2,
+            top: word.y - wordHeight / 2,
+            bottom: word.y + wordHeight / 2
+        };
+
+        // Check for overlap
+        let collision = !(heroHitbox.right < wordHitbox.left ||
+            heroHitbox.left > wordHitbox.right ||
+            heroHitbox.bottom < wordHitbox.top ||
+            heroHitbox.top > wordHitbox.bottom);
+
+        if (collision) {
+            console.log("Collision detected!"); // Debug log
+            this.showRetryPrompt = true;
+            this.currentHopeQuote = random(this.hopeQuotes);
+            if (this.hurtSound) this.hurtSound.play();
+            if (this.wordgameSound) this.wordgameSound.stop();
+            if (this.jokerSound) this.jokerSound.stop();
+            return true;
+        }
+        return false;
+    }
+
+    updateDialogue() {
+        if (this.currentDialogue < this.heroDialogues.length) {
+            let dialogue = this.heroDialogues[this.currentDialogue];
+
+            // Speed up typing by reducing frame delay
+            if (frameCount % this.typingSpeed === 0) {  // Using typingSpeed from constructor
+                if (this.currentChar < dialogue.text.length) {
+                    this.displayText += dialogue.text.charAt(this.currentChar);
+                    this.currentChar++;
+                } else if (!this.waitingForNext) {
+                    this.waitingForNext = true;
+                    setTimeout(() => {
+                        this.currentDialogue++;
+                        this.currentChar = 0;
+                        this.displayText = "";
+                        this.waitingForNext = false;
+                    }, 1500);  // Reduced wait time between dialogues
+                }
+            }
+        }
+    }
+}
+
+// Update HopeParticle class for subtler particles
+class HopeParticle {
+    constructor(x, y, angle) {
+        this.x = x;
+        this.y = y;
+        this.angle = angle;
+        this.speed = random(1, 3);  // Reduced speed
+        this.size = random(2, 8);   // Smaller size
+        this.alpha = 200;           // Start less bright
+        this.color = random() > 0.5 ? color(0, 100, 255) : color(255);
+        this.opacity = random(0.2, 0.5);  // Lower opacity range
+    }
+
+    update() {
+        this.x += cos(this.angle) * this.speed;
+        this.y += sin(this.angle) * this.speed;
+        this.alpha -= 3;  // Fade out faster
+        return this.alpha > 0;
+    }
+
+    draw() {
+        push();
+        noStroke();
+        fill(this.color.levels[0], this.color.levels[1],
+            this.color.levels[2], this.alpha * this.opacity);
+        circle(this.x, this.y, this.size);
+        pop();
     }
 }

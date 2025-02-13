@@ -38,8 +38,8 @@ function setup() {
 function draw() {
     if (currentScene) {
         currentScene.draw();
+        CustomCursor.draw();
     }
-    CustomCursor.draw();  // Draw cursor last, after all scenes
 }
 
 function mousePressed() {

@@ -7,14 +7,19 @@ class CustomCursor {
     static spinStartTime = 0;
     static spinDuration = 1500;
     static trailPositions = [];
+    static isActive = false;  // Keep state tracking
 
     static easeInOutQuart(x) {
         return x < 0.5 ? 8 * x * x * x * x : 1 - Math.pow(-2 * x + 2, 4) / 2;
     }
 
     static draw() {
-        noCursor();
-        cursor('none');
+        noCursor();  // Always ensure system cursor is hidden
+        document.body.style.cursor = 'none';
+
+        if (!this.isActive) {
+            this.activate();
+        }
 
         let dx = mouseX - this.lastX;
         let dy = mouseY - this.lastY;
@@ -124,5 +129,22 @@ class CustomCursor {
         rect(-2, 7, 4, 1.5);
 
         pop();
+    }
+
+    static activate() {
+        if (!this.isActive) {
+            this.isActive = true;
+            noCursor();
+            document.body.style.cursor = 'none';
+            this.trailPositions = [];
+            this.rotation = 0;
+            this.lastX = mouseX;
+            this.lastY = mouseY;
+        }
+    }
+
+    static deactivate() {
+        this.isActive = false;
+        this.trailPositions = [];
     }
 }

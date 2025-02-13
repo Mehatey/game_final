@@ -1,9 +1,10 @@
 class Scene1 {
     constructor() {
+        noCursor();
         document.body.style.cursor = 'none';
         const elements = document.querySelectorAll('*');
         elements.forEach(element => {
-            element.style.cursor = 'none';
+            element.style.cursor = 'none !important';
         });
 
         document.querySelectorAll('button').forEach(button => {
@@ -118,7 +119,7 @@ class Scene1 {
         this.revealProgress = 0;
 
         this.revealedAreas = [];
-        this.revealSize = 250;  // Increased from 200
+        this.revealSize = 400;  // Increased from 250 for larger reveal areas
 
         this.waveOffset = 0;
         this.waveSpeed = 0.005;  // Very slow for gentle movement
@@ -302,6 +303,57 @@ class Scene1 {
         // Add event listener to prevent cursor showing on hover
         document.addEventListener('mouseover', (e) => {
             e.target.style.cursor = 'none';
+        });
+
+        // Keep Scene4 debug button (previously labeled as Scene3)
+        this.debugButtonScene3 = createButton('Scene4.5');
+        this.debugButtonScene3.position(20, height - 200);
+        this.debugButtonScene3.style('background-color', '#FF0000');
+        this.debugButtonScene3.style('color', 'white');
+        this.debugButtonScene3.style('border', 'none');
+        this.debugButtonScene3.style('padding', '10px 20px');
+        this.debugButtonScene3.style('cursor', 'none');
+        this.debugButtonScene3.style('font-family', 'ARCADE');
+
+        this.debugButtonScene3.mousePressed(() => {
+            console.log("Debug: Switching to Scene4.5");
+            this.cleanup();
+            this.debugButtonScene3.remove();
+            currentScene = new Scene4_5();
+            if (currentScene.preload) {
+                currentScene.preload();
+            }
+        });
+
+        // Update debug button properties in constructor
+        this.debugButton = {
+            x: 10,
+            y: 10,
+            width: 100,
+            height: 30,
+            visible: true,
+            text: "Scene 5"
+        };
+
+        // Add Scene5 debug button
+        this.debugButtonScene5 = createButton('Scene5');
+        this.debugButtonScene5.position(20, height - 150);  // Position it below Scene4.5 button
+        this.debugButtonScene5.style('background-color', '#FF0000');
+        this.debugButtonScene5.style('color', 'white');
+        this.debugButtonScene5.style('border', 'none');
+        this.debugButtonScene5.style('padding', '10px 20px');
+        this.debugButtonScene5.style('cursor', 'none');
+        this.debugButtonScene5.style('font-family', 'ARCADE');
+
+        this.debugButtonScene5.mousePressed(() => {
+            console.log("Debug: Switching to Scene5");
+            this.cleanup();
+            this.debugButtonScene5.remove();
+            this.debugButtonScene3.remove();
+            let scene5 = new Scene5();
+            scene5.preload().then(() => {
+                currentScene = scene5;
+            });
         });
     }
 
@@ -723,8 +775,6 @@ class Scene1 {
                 this.drawPixelButton(this.buttons.straightToMainBattle);
             }
 
-            this.drawCustomCursor(); // Draw the custom cursor
-
             // Draw sound play button
             push();
             // Check hover state
@@ -757,10 +807,26 @@ class Scene1 {
             }
         }
 
-        // Always draw custom cursor last
-        push();
-        CustomCursor.draw();
-        pop();
+        // Draw debug button if visible
+        if (this.debugButton.visible) {
+            push();
+            // Button background
+            fill(this.debugButton.color);
+            stroke(255);
+            strokeWeight(2);
+            rect(this.debugButton.x, this.debugButton.y,
+                this.debugButton.width, this.debugButton.height, 5);
+
+            // Button text
+            noStroke();
+            fill(255);
+            textAlign(CENTER, CENTER);
+            textSize(16);
+            text(this.debugButton.text,
+                this.debugButton.x + this.debugButton.width / 2,
+                this.debugButton.y + this.debugButton.height / 2);
+            pop();
+        }
     }
 
 
@@ -996,10 +1062,6 @@ class Scene1 {
         pop();
     }
 
-    drawCustomCursor() {
-        CustomCursor.draw();  // Use the cube cursor instead of circles
-    }
-
     mousePressed() {
         // Resume audio context on user interaction
         if (getAudioContext().state !== 'running') {
@@ -1112,22 +1174,26 @@ class Scene1 {
         // In mousePressed(), update state 4 button handlers
         if (this.state === 4) {
             try {
+                // Begin Journey -> Scene2
+                if (this.isMouseOver(this.buttons.beginJourney)) {
+                    console.log("Begin Journey clicked");  // Debug log
+                    if (this.buttonSound) {
+                        this.buttonSound.play().catch(e => console.error('Error playing button sound:', e));
+                    }
+                    this.cleanup();
+                    currentScene = new Scene2();
+                    if (currentScene.preload) {
+                        currentScene.preload();
+                    }
+                    return;
+                }
+
                 // Skip Cinematic -> Scene3
                 if (this.isMouseOver(this.buttons.skipCinematic)) {
                     console.log("Skip Cinematic clicked");
                     if (this.buttonSound) this.buttonSound.play();
                     this.cleanup();
                     currentScene = new Scene3();
-                    if (currentScene.preload) currentScene.preload();
-                    return;
-                }
-
-                // Begin Journey -> Scene2
-                if (this.isMouseOver(this.buttons.beginJourney)) {
-                    console.log("Begin Journey clicked");
-                    if (this.buttonSound) this.buttonSound.play();
-                    this.cleanup();
-                    currentScene = new Scene2();
                     if (currentScene.preload) currentScene.preload();
                     return;
                 }
@@ -1144,6 +1210,24 @@ class Scene1 {
             } catch (e) {
                 console.error('Error in state 4 button handler:', e);
             }
+        }
+
+        // Check for debug button click
+        if (this.debugButton.visible &&
+            mouseX > this.debugButton.x &&
+            mouseX < this.debugButton.x + this.debugButton.width &&
+            mouseY > this.debugButton.y &&
+            mouseY < this.debugButton.y + this.debugButton.height) {
+
+            console.log("Debug: Transitioning to Scene5");
+            this.cleanup();
+
+            // Create and transition to Scene5
+            let scene5 = new Scene5();
+            scene5.preload().then(() => {
+                currentScene = scene5;
+            });
+            return;
         }
     }
 
@@ -1179,7 +1263,7 @@ class Scene1 {
                 drawingContext.rect(waveX, waveY, area.width, area.height);
             });
 
-            // Add current position to revealed areas
+            // Simply add new reveal area at mouse position
             this.revealedAreas.push({
                 x: mouseX - this.revealSize / 2,
                 y: mouseY - this.revealSize / 2,
@@ -1194,10 +1278,10 @@ class Scene1 {
             let imageY = y + cos(this.waveOffset) * this.waveAmplitude * 0.5;
             image(this.coverImage, imageX, imageY, w, h);
             drawingContext.restore();
+            pop();
 
             // Track reveal progress
             this.revealProgress = min(this.revealProgress + 0.001, 1.0);
-            pop();
 
             // Track reveal progress and time
             if (!this.revealStartTime && this.revealedAreas.length > 0) {
@@ -1218,37 +1302,14 @@ class Scene1 {
                     if (this.typewriterIndex < this.letters.length) {
                         this.letterAnimations[this.typewriterIndex].active = true;
                         this.letterAnimations[this.typewriterIndex].x = width / 2 - (this.letters.length * 80) / 2 + (this.typewriterIndex * 80);
-                        this.letterAnimations[this.typewriterIndex].y = height * 0.5 + 100;
+                        this.letterAnimations[this.typewriterIndex].y = height / 2;
                         this.typewriterIndex++;
                         this.lastTypeTime = currentTime;
                     }
                 }
             }
 
-            // Add hover detection right before drawing letters
-            this.letterAnimations.forEach((anim, i) => {
-                // Check hover only on the exact letter pixels
-                let letterBounds = this.font.textBounds(this.letters[i], anim.x, anim.y, 24 * anim.scale);
-                anim.hover = mouseX > letterBounds.x &&
-                    mouseX < letterBounds.x + letterBounds.w &&
-                    mouseY > letterBounds.y &&
-                    mouseY < letterBounds.y + letterBounds.h;
-
-                // Assign original colors from our color array
-                const colors = [
-                    { r: 255, g: 100, b: 100 },  // Red
-                    { r: 100, g: 255, b: 100 },  // Green
-                    { r: 100, g: 100, b: 255 },  // Blue
-                    { r: 255, g: 255, b: 100 },  // Yellow
-                    { r: 255, g: 100, b: 255 },  // Magenta
-                    { r: 100, g: 255, b: 255 },  // Cyan
-                    { r: 255, g: 150, b: 50 },   // Orange
-                    { r: 150, g: 50, b: 255 }    // Purple
-                ];
-                anim.hoverColor = colors[i % colors.length];
-            });
-
-            // Add overlay effect right after hover detection
+            // Draw the black overlay BEFORE the letters
             let isAnyLetterHovered = this.letterAnimations.some(anim => anim.hover);
             this.targetOverlayAlpha = isAnyLetterHovered ? 217 : 0;
             this.overlayAlpha = lerp(this.overlayAlpha, this.targetOverlayAlpha, this.overlayFadeSpeed);
@@ -1260,130 +1321,162 @@ class Scene1 {
                 pop();
             }
 
-            // Then continue with existing letter drawing code
+            // THEN draw the letters on top
             this.letterAnimations.forEach((anim, i) => {
                 if (!anim.active) return;
 
+                // Calculate total width first
                 let spacing = 160;
-                let totalWidth = this.letters.length * spacing;
-                let startX = width / 2 - totalWidth / 2 + (i * spacing);
-                let targetY = height * 0.5 + 100;
+                let totalWidth = (this.letters.length - 1) * spacing;  // Subtract 1 to account for first and last positions
 
-                anim.x = startX;
-                anim.y = targetY;
-                anim.scale = 8;
+                // Calculate starting X position to center the entire text
+                let startX = (width - totalWidth) / 2;  // This centers the entire text block
+
+                // Calculate each letter's position
+                let letterX = startX + (i * spacing);
+                let targetY = height / 2;
+
+                // Check hover
+                let d = dist(mouseX, mouseY, letterX, targetY);
+                let isHovered = d < 50;
+                anim.hover = isHovered;
 
                 push();
-                translate(anim.x, anim.y);
+                translate(letterX, targetY);
 
-                if (anim.hover) {
-                    let time = frameCount * 0.0001; // Much slower
-                    let slowerTime = frameCount * 0.00005; // Much slower
-                    let rotateX = sin(time) * 0.05; // Smaller rotation
-                    let rotateY = cos(slowerTime) * 0.05;
+                if (isHovered) {
+                    // Updated letter colors with light blue for U
+                    const letterColors = [
+                        color(255, 0, 0),        // S - Red
+                        color(255, 127, 0),      // Q - Orange
+                        color(255, 255, 0),      // U - Yellow
+                        color(0, 255, 0),        // A - Green
+                        color(0, 0, 255),        // R - Blue
+                        color(0, 191, 255),      // U - Light Blue (changed to DeepSkyBlue)
+                        color(148, 0, 211),      // B - Purple
+                        color(255, 0, 255)       // E - Magenta
+                    ];
 
-                    drawingContext.transform(
-                        1 + rotateX, 0,
-                        rotateY, 1,
+                    let currentColor = letterColors[i];
+
+                    // Enhanced glow effect
+                    drawingContext.shadowBlur = 30;
+                    drawingContext.shadowColor = color(red(currentColor), green(currentColor), blue(currentColor));
+
+                    // Dynamic rotation and warping
+                    let time = frameCount * 0.05;
+
+                    // Apply transformations in correct order
+                    rotate(sin(time) * 0.2);
+
+                    // Instead of scale, use matrix transformation for warping
+                    let warpAmount = sin(time * 2) * 0.2;
+                    applyMatrix(
+                        1 + warpAmount, 0,
+                        0, 1 - warpAmount,
                         0, 0
                     );
+
+                    // Floating animation
+                    translate(0, sin(time * 1.5) * 10);
+
+                    // Draw letter with color
+                    fill(currentColor);
+                    textSize(24 * 8);
+                    textAlign(CENTER, CENTER);
+                    text(this.letters[i], 0, 0);
+                } else {
+                    // Non-hovered state
+                    fill(255);
+                    drawingContext.shadowBlur = 0;
+                    textSize(24 * 8);
+                    textAlign(CENTER, CENTER);
+                    text(this.letters[i], 0, 0);
                 }
 
-                textSize(24 * anim.scale);
-                text(this.letters[i], 0, 0);
                 pop();
             });
-        }
 
-        // Enhanced START button with thicker stroke and dynamic hover
-        if (this.playButton && millis() - this.fadeStartTime > 1000) {
-            push();
-            this.playButton.x = width / 2;
-            this.playButton.y = height - 100;
+            // Draw START button last
+            if (this.playButton && millis() - this.fadeStartTime > 1000) {
+                push();
+                this.playButton.x = width / 2;
+                this.playButton.y = height - 100;
 
-            let isHovered = mouseX > this.playButton.x - this.playButton.width / 2 &&
-                mouseX < this.playButton.x + this.playButton.width / 2 &&
-                mouseY > this.playButton.y - this.playButton.height / 2 &&
-                mouseY < this.playButton.y + this.playButton.height / 2;
+                let isHovered = mouseX > this.playButton.x - this.playButton.width / 2 &&
+                    mouseX < this.playButton.x + this.playButton.width / 2 &&
+                    mouseY > this.playButton.y - this.playButton.height / 2 &&
+                    mouseY < this.playButton.y + this.playButton.height / 2;
 
-            const colors = [
-                { r: 255, g: 100, b: 100 },  // Red
-                { r: 100, g: 255, b: 100 },  // Green
-                { r: 100, g: 100, b: 255 },  // Blue
-                { r: 255, g: 255, b: 100 },  // Yellow
-                { r: 255, g: 100, b: 255 },  // Magenta
-                { r: 100, g: 255, b: 255 },  // Cyan
-                { r: 255, g: 150, b: 50 },   // Orange
-                { r: 150, g: 50, b: 255 }    // Purple
-            ];
+                const colors = [
+                    { r: 255, g: 100, b: 100 },  // Red
+                    { r: 100, g: 255, b: 100 },  // Green
+                    { r: 100, g: 100, b: 255 },  // Blue
+                    { r: 255, g: 255, b: 100 },  // Yellow
+                    { r: 255, g: 100, b: 255 },  // Magenta
+                    { r: 100, g: 255, b: 255 },  // Cyan
+                    { r: 255, g: 150, b: 50 },   // Orange
+                    { r: 150, g: 50, b: 255 }    // Purple
+                ];
 
-            let time = frameCount * 0.005;
-            let index = floor(time) % colors.length;
-            let nextIndex = (index + 1) % colors.length;
-            let fraction = time - floor(time);
+                let time = frameCount * 0.005;
+                let index = floor(time) % colors.length;
+                let nextIndex = (index + 1) % colors.length;
+                let fraction = time - floor(time);
 
-            let currentColor = {
-                r: lerp(colors[index].r, colors[nextIndex].r, fraction),
-                g: lerp(colors[index].g, colors[nextIndex].g, fraction),
-                b: lerp(colors[index].b, colors[nextIndex].b, fraction)
-            };
+                let currentColor = {
+                    r: lerp(colors[index].r, colors[nextIndex].r, fraction),
+                    g: lerp(colors[index].g, colors[nextIndex].g, fraction),
+                    b: lerp(colors[index].b, colors[nextIndex].b, fraction)
+                };
 
-            if (isHovered) {
-                fill(255);  // White fill
-                stroke(0);  // Black stroke
-                strokeWeight(3);  // Thicker stroke
+                if (isHovered) {
+                    fill(255);  // White fill
+                    stroke(0);  // Black stroke
+                    strokeWeight(3);  // Thicker stroke
 
-                // Dynamic shadow effect
-                let shadowSize = map(sin(frameCount * 0.05), -1, 1, 10, 20);
-                drawingContext.shadowInset = true;
-                drawingContext.shadowBlur = shadowSize;
-                drawingContext.shadowColor = 'rgba(0, 0, 0, 0.5)';
-                drawingContext.shadowOffsetX = 2;
-                drawingContext.shadowOffsetY = 2;
+                    // Dynamic shadow effect
+                    let shadowSize = map(sin(frameCount * 0.05), -1, 1, 10, 20);
+                    drawingContext.shadowInset = true;
+                    drawingContext.shadowBlur = shadowSize;
+                    drawingContext.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                    drawingContext.shadowOffsetX = 2;
+                    drawingContext.shadowOffsetY = 2;
 
-                // Dynamic outer glow
-                let glowSize = map(sin(frameCount * 0.05), -1, 1, 40, 60);
-                drawingContext.shadowBlur = glowSize;
-                drawingContext.shadowColor = 'rgba(0, 150, 255, 0.8)';
-            } else {
-                fill(0, 230);
-                stroke(currentColor.r, currentColor.g, currentColor.b);
-                strokeWeight(3);  // Thicker stroke
+                    // Dynamic outer glow
+                    let glowSize = map(sin(frameCount * 0.05), -1, 1, 40, 60);
+                    drawingContext.shadowBlur = glowSize;
+                    drawingContext.shadowColor = 'rgba(0, 150, 255, 0.8)';
+                } else {
+                    fill(0, 230);
+                    stroke(currentColor.r, currentColor.g, currentColor.b);
+                    strokeWeight(3);  // Thicker stroke
 
-                let glowSize = map(sin(frameCount * 0.05), -1, 1, 40, 60);
-                drawingContext.shadowBlur = glowSize;
-                drawingContext.shadowColor = `rgba(${currentColor.r}, ${currentColor.g}, ${currentColor.b}, 0.8)`;
+                    let glowSize = map(sin(frameCount * 0.05), -1, 1, 40, 60);
+                    drawingContext.shadowBlur = glowSize;
+                    drawingContext.shadowColor = `rgba(${currentColor.r}, ${currentColor.g}, ${currentColor.b}, 0.8)`;
+                }
+
+                rect(this.playButton.x - this.playButton.width / 2,
+                    this.playButton.y - this.playButton.height / 2,
+                    this.playButton.width,
+                    this.playButton.height,
+                    5);
+
+                noStroke();
+                textAlign(CENTER, CENTER);
+                textSize(24);
+                if (isHovered) {
+                    drawingContext.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                    fill(0);  // Black text on hover
+                } else {
+                    drawingContext.shadowColor = `rgba(${currentColor.r}, ${currentColor.g}, ${currentColor.b}, 0.8)`;
+                    fill(currentColor.r, currentColor.g, currentColor.b);
+                }
+                text("START", this.playButton.x, this.playButton.y);
+                pop();
             }
-
-            rect(this.playButton.x - this.playButton.width / 2,
-                this.playButton.y - this.playButton.height / 2,
-                this.playButton.width,
-                this.playButton.height,
-                5);
-
-            noStroke();
-            textAlign(CENTER, CENTER);
-            textSize(24);
-            if (isHovered) {
-                drawingContext.shadowColor = 'rgba(0, 0, 0, 0.8)';
-                fill(0);  // Black text on hover
-            } else {
-                drawingContext.shadowColor = `rgba(${currentColor.r}, ${currentColor.g}, ${currentColor.b}, 0.8)`;
-                fill(currentColor.r, currentColor.g, currentColor.b);
-            }
-            text("START", this.playButton.x, this.playButton.y);
-            pop();
         }
-
-        // Only show other buttons after play is clicked
-        if (this.playButtonClicked) {
-            this.drawPixelButton(this.buttons.skipCinematic);
-            this.drawPixelButton(this.buttons.beginJourney);
-            this.drawPixelButton(this.buttons.straightToMainBattle);
-        }
-
-        // Draw custom cursor on top
-        CustomCursor.draw();
     }
 
     // Add this helper method
@@ -1408,8 +1501,12 @@ class Scene1 {
                 }
             });
 
-            // Add cursor cleanup
-            // document.body.style.cursor = 'default';  // Remove this line
+            // Remove Scene4 debug button (previously Scene3)
+            if (this.debugButtonScene3) this.debugButtonScene3.remove();
+
+            // Remove Scene5 debug button
+            if (this.debugButtonScene5) this.debugButtonScene5.remove();
+
         } catch (e) {
             console.error('Error in cleanup:', e);
         }
@@ -1424,7 +1521,7 @@ class Scene1 {
                     let spacing = 160;
                     let totalWidth = this.letters.length * spacing;
                     let startX = width / 2 - totalWidth / 2 + (i * spacing);
-                    let targetY = height * 0.5 + 100;
+                    let targetY = height / 2;
 
                     anim.x = startX;
                     anim.y = targetY;

@@ -122,6 +122,24 @@ class Scene4 {
                 alpha: random(100, 255)
             });
         }
+
+        // Initialize portal properties
+        this.portalProgress = 0;
+        this.portalDuration = 2000;
+        this.startTime = millis();
+        this.portalComplete = false;
+
+        // Set background to full screen immediately
+        this.backgroundScale = 1;
+        this.backgroundX = 0;
+        this.backgroundY = 0;
+
+        // Ensure cursor is hidden at start
+        noCursor();
+        document.body.style.cursor = 'none';
+
+        // Initialize cursor at start
+        CustomCursor.activate();
     }
 
     preload() {
@@ -131,9 +149,84 @@ class Scene4 {
     }
 
     draw() {
+        // Start with black background
+        background(0);
+
+        if (!this.portalComplete) {
+            push();
+            let elapsed = millis() - this.startTime;
+            this.portalProgress = min(elapsed / this.portalDuration, 1);
+
+            // Calculate portal size
+            let portalSize = map(this.portalProgress, 0, 1, 0, width * 1.5);
+            let centerX = width / 2;
+            let centerY = height / 2;
+
+            // Create clipping mask for the background
+            drawingContext.save();
+
+            // Start shape for clipping mask
+            beginShape();
+
+            // Draw the portal shape that will mask the background
+            for (let i = 0; i < TWO_PI; i += 0.1) {
+                let xoff = map(cos(i), -1, 1, 0, 0.2);
+                let yoff = map(sin(i), -1, 1, 0, 0.2);
+                let r = portalSize / 2;
+                let x = centerX + r * cos(i) + noise(xoff, yoff, frameCount * 0.02) * 20;
+                let y = centerY + r * sin(i) + noise(xoff, yoff + 5, frameCount * 0.02) * 20;
+                vertex(x, y);
+            }
+            endShape(CLOSE);
+
+            // Use the shape as a clip mask
+            drawingContext.clip();
+
+            // Draw background image inside the clip mask
+            // Calculate scaling to ensure image covers the portal
+            let scale = max(width / this.background.width, height / this.background.height) * 1.2;
+            let scaledWidth = this.background.width * scale;
+            let scaledHeight = this.background.height * scale;
+
+            // Center the scaled image
+            let x = width / 2 - scaledWidth / 2;
+            let y = height / 2 - scaledHeight / 2;
+
+            image(this.background, x, y, scaledWidth, scaledHeight);
+
+            drawingContext.restore();
+
+            // Draw portal edge glow effects
+            noFill();
+            for (let i = 0; i < 3; i++) {
+                stroke(0, 150, 255, 255 - i * 50);
+                strokeWeight(3 - i);
+                drawingContext.shadowBlur = 30;
+                drawingContext.shadowColor = 'rgba(0, 150, 255, 0.5)';
+                beginShape();
+                for (let a = 0; a < TWO_PI; a += 0.1) {
+                    let r = portalSize / 2 + i * 5;
+                    let x = centerX + r * cos(a);
+                    let y = centerY + r * sin(a);
+                    vertex(x, y);
+                }
+                endShape(CLOSE);
+            }
+            pop();
+
+            if (this.portalProgress >= 1) {
+                this.portalComplete = true;
+            }
+        } else {
+            // When portal is complete, show full background
+            if (this.background) {
+                image(this.background, 0, 0, width, height);
+            }
+        }
+
         if (this.doorOpening) {
             background(0);
-            
+
             let elapsed = millis() - this.doorStartTime;
             if (elapsed > 0) {
                 // Draw warp speed effect
@@ -143,13 +236,13 @@ class Scene4 {
                     stroke(255, 255, 255, warpLine.alpha);
                     warpLine.x += warpLine.speed;
                     if (warpLine.x > width) warpLine.x = 0;
-                    
-                    let angle = atan2(height/2 - warpLine.y, width/2 - warpLine.x);
+
+                    let angle = atan2(height / 2 - warpLine.y, width / 2 - warpLine.x);
                     let startX = warpLine.x;
                     let startY = warpLine.y;
                     let endX = warpLine.x + cos(angle) * warpLine.length;
                     let endY = warpLine.y + sin(angle) * warpLine.length;
-                    
+
                     line(startX, startY, endX, endY);
                 }
                 pop();
@@ -165,50 +258,50 @@ class Scene4 {
 
                 push();
                 drawingContext.save();
-                
+
                 // Create portal shape
-                translate(width/2, height/2);
+                translate(width / 2, height / 2);
                 beginShape();
                 for (let a = 0; a < TWO_PI; a += 0.1) {
                     let xoff = map(cos(a + frameCount * 0.05), -1, 1, 0, 0.2);
                     let yoff = map(sin(a + frameCount * 0.05), -1, 1, 0, 0.2);
-                    let r = this.doorWidth/2;
+                    let r = this.doorWidth / 2;
                     let x = r * cos(a) + noise(xoff, yoff, frameCount * 0.02) * 20;
                     let y = r * sin(a) + noise(xoff, yoff + 5, frameCount * 0.02) * 20;
                     vertex(x, y);
                 }
                 endShape(CLOSE);
-                
+
                 // Add glow and portal effects
                 drawingContext.shadowBlur = 30;
                 drawingContext.shadowColor = 'rgba(0, 150, 255, 0.5)';
-                
+
                 // Clip to portal shape
                 drawingContext.clip();
 
                 // Draw the actual scene content
                 push();
-                translate(-width/2, -height/2);
+                translate(-width / 2, -height / 2);
                 if (this.background) {
                     image(this.background, 0, 0, width, height);
                 }
                 this.hero.draw();
                 this.hope.draw();
                 pop();
-                
+
                 drawingContext.restore();
                 pop();
 
                 // Draw portal edge effects
                 push();
-                translate(width/2, height/2);
+                translate(width / 2, height / 2);
                 noFill();
                 for (let i = 0; i < 3; i++) {
                     stroke(0, 150, 255, 255 - i * 50);
                     strokeWeight(3 - i);
                     beginShape();
                     for (let a = 0; a < TWO_PI; a += 0.1) {
-                        let r = this.doorWidth/2 + i * 5;
+                        let r = this.doorWidth / 2 + i * 5;
                         let x = r * cos(a);
                         let y = r * sin(a);
                         vertex(x, y);
@@ -250,7 +343,6 @@ class Scene4 {
                 // Show initial dialogues
                 if (!this.dialogueBox.isTyping && this.dialogueBox.isComplete()) {
                     let dialogue = this.dialogues[this.currentDialogue];
-                    this.dialogueBox.typingSpeed = 1;
                     this.dialogueBox.startDialogue(
                         dialogue.text,
                         dialogue.speaker === 'hero' ? this.playerName : 'Hope'
@@ -268,7 +360,6 @@ class Scene4 {
                 if (!this.dialogueBox.isTyping && this.dialogueBox.isComplete()) {
                     if (this.currentPostDialogue < this.postDialogues.length) {
                         let dialogue = this.postDialogues[this.currentPostDialogue];
-                        this.dialogueBox.typingSpeed = 1;
                         this.dialogueBox.startDialogue(
                             dialogue.text,
                             dialogue.speaker === 'hero' ? this.playerName : 'Hope'
@@ -295,6 +386,15 @@ class Scene4 {
             this.dialogueBox.update();
             this.dialogueBox.draw();
         }
+
+        // Draw cursor in all states
+        CustomCursor.draw();  // Always draw cursor, not just during questions
+
+        // Draw dialogue box if active
+        if (this.dialogueBox) {
+            this.dialogueBox.update();
+            this.dialogueBox.draw();
+        }
     }
 
     keyPressed() {
@@ -304,10 +404,7 @@ class Scene4 {
     }
 
     cleanup() {
-        if (this.sceneTransitionTimer) {
-            clearTimeout(this.sceneTransitionTimer);
-        }
-        // Clean up all Howler sounds
+        // Stop all sounds
         if (this.gameMusic) {
             this.gameMusic.stop();
             this.gameMusic.unload();
@@ -316,6 +413,23 @@ class Scene4 {
             this.dialogueBox.typingSound.stop();
             this.dialogueBox.typingSound.unload();
         }
+        if (this.buttonSound) {
+            this.buttonSound.stop();
+            this.buttonSound.unload();
+        }
+        if (this.firingSound) {
+            this.firingSound.stop();
+            this.firingSound.unload();
+        }
+
+        // Remove ALL debug buttons
+        const buttons = document.querySelectorAll('button');
+        buttons.forEach(button => {
+            button.remove();
+            button.style.display = 'none';  // Extra safety
+        });
+
+        CustomCursor.deactivate();
     }
 
     showQuestion() {
@@ -345,7 +459,7 @@ class Scene4 {
         // Draw options with hover effect
         for (let i = 0; i < q.options.length; i++) {
             let y = height / 2 - boxHeight / 2 + 160 + i * 70;
-            
+
             // Check hover state
             let isHovered = mouseX > width / 2 - boxWidth / 2 + 40 &&
                 mouseX < width / 2 + boxWidth / 2 - 40 &&
@@ -446,7 +560,7 @@ class Scene4 {
         this.cannonPosition = createVector(this.hero.x, this.hero.y);
         this.cannonDirection = createVector(1, 0);
         this.cannonActive = true;
-        
+
         // Play firing sound
         if (this.firingSound) {
             this.firingSound.play();
@@ -533,5 +647,17 @@ class Scene4 {
         if (currentScene.preload) {
             currentScene.preload();
         }
+    }
+
+    // When transitioning to Scene4
+    static transitionIn() {
+        CustomCursor.hide();
+        // ... other transition code
+    }
+
+    // When leaving Scene4
+    cleanup() {
+        CustomCursor.show();  // Reset cursor state
+        // ... other cleanup code
     }
 }

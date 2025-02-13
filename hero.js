@@ -2,12 +2,18 @@ class Hero {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.speed = 5;
+        this.velocity = createVector(0, 0);
+        this.maxSpeed = 60;  // Increased from default to 60 for much faster movement
+        this.visible = true;
+        this.sprite = null;
+        this.speed = 8;
         this.direction = 'still';
         this.images = {};
         this.currentImage = null;
         this.imagesLoaded = false;
         this.size = 150;
+        this.width = this.size;    // Add explicit width
+        this.height = this.size;   // Add explicit height
     }
 
     preload() {
@@ -40,6 +46,16 @@ class Hero {
     }
 
     update() {
+        // Handle keyboard input
+        if (keyIsDown(LEFT_ARROW)) this.x -= 5;
+        if (keyIsDown(RIGHT_ARROW)) this.x += 5;
+        if (keyIsDown(UP_ARROW)) this.y -= 5;
+        if (keyIsDown(DOWN_ARROW)) this.y += 5;
+
+        // Add bounds checking
+        this.x = constrain(this.x, 0, width);
+        this.y = constrain(this.y, 0, height);
+
         if (!this.currentImage) return;  // Don't update if images aren't loaded
 
         let moving = false;
@@ -78,7 +94,12 @@ class Hero {
     }
 
     draw() {
-        if (this.currentImage) {
+        if (this.sprite) {
+            push();
+            imageMode(CENTER);
+            image(this.sprite, this.x, this.y);
+            pop();
+        } else if (this.currentImage) {
             imageMode(CENTER);
             image(this.currentImage, this.x, this.y, this.size, this.size);
         } else {

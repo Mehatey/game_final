@@ -1,6 +1,6 @@
-class Scene4_5_js {
+class Scene4_5 {
     constructor() {
-        console.log('Scene4_5_js constructor started');
+        console.log('Scene4_5 constructor started');
         try {
             this.hero = new Hero(width / 2, height / 2);
             this.hero.x = width / 2;
@@ -69,6 +69,15 @@ class Scene4_5_js {
                 })
             };
 
+            // Add sound effects
+            this.typingSound = new Howl({
+                src: ['./assets/sounds/typing.mp3'],
+                volume: 0.3,
+                loop: true,
+                onload: () => console.log("Typing sound loaded"),
+                onloaderror: (id, err) => console.error("Error loading typing sound:", err)
+            });
+
             // Add new sound effects while keeping original paths
             this.screamSound = new Howl({
                 src: ['./assets/sounds/scream.mp3'],
@@ -96,8 +105,11 @@ class Scene4_5_js {
 
             // Add Hope and DialogueBox
             this.hope = new Hope();
-            this.hope.x = width - 200;  // Set initial position explicitly
-            this.hope.y = height / 2;
+            this.hope.x = 80;  // Much closer to left edge
+            this.hope.y = 60;  // Much closer to top edge
+            this.hero.visible = false;
+            this.background = null;
+            this.assetsLoaded = false;
             this.hopeVisible = true;
             this.gameStarted = false;
             this.dialogueBox = new DialogueBox();
@@ -125,7 +137,7 @@ class Scene4_5_js {
                 fourLoko: null
             };
             this.distractions = [];
-            this.maxDistractions = 5; // Start with fewer distractions
+            this.maxDistractions = 20;  // Allow up to 4 distractions at once
 
             // Initialize warp lines
             this.warpLines = [];
@@ -142,7 +154,7 @@ class Scene4_5_js {
             // Hope movement properties
             this.hopeMovement = {
                 angle: 0,
-                radius: 30
+                radius: 10  // Smaller radius for tighter movement
             };
 
             // Flag for initial scream
@@ -151,18 +163,15 @@ class Scene4_5_js {
             // Add new sounds
             this.heartbeatSound = new Howl({
                 src: ['./assets/sounds/heartbeat.mp3'],
-                volume: 1.0,
+                volume: 0.8,
                 loop: true,
-                onload: () => console.log("Heartbeat sound loaded"),
-                onloaderror: (id, err) => console.error("Error loading heartbeat sound:", err)
+                onload: () => console.log("Heartbeat loaded")
             });
 
-            this.gameSound = new Howl({
-                src: ['./assets/sounds/4.5game.mp3'],
+            this.wordgameSound = new Howl({
+                src: ['./assets/sounds/wordgame.mp3'],
                 volume: 0.5,
-                loop: true,
-                onload: () => console.log("4.5game sound loaded"),
-                onloaderror: (id, err) => console.error("Error loading 4.5game sound:", err)
+                loop: true
             });
 
             this.hurtSound = new Howl({
@@ -209,24 +218,24 @@ class Scene4_5_js {
 
             // Add in-game dialogue sequences
             this.gameDialogues = [
-                { speaker: 'Hero', text: "There's too many! I can't do this!", time: 2 },
-                { speaker: 'Hope', text: "Stay focused! Avoid getting hit for 15 seconds to charge your shield.", time: 6 },
+                { speaker: 'Hero', text: "There's too many! I can't do this!", time: 1 },
+                { speaker: 'Hope', text: "Avoid getting hit for 15 seconds.", time: 6 },
                 { speaker: 'Hero', text: "Shield activated! I can do this!", time: 0, trigger: 'shield' },  // 0 means wait for trigger
-                { speaker: 'Hope', text: "Remember, your strength comes from within!", time: 20 }  // Mid-game encouragement
+                { speaker: 'Hope', text: "Strength comes from within!", time: 30 }  // Mid-game encouragement
             ];
             this.currentGameDialogue = 0;
             this.gameDialogueTimer = 0;
             this.gameDialogueActive = false;
 
-            this.moveSpeed = 5;  // Single movement speed value
+            this.moveSpeed = 10;  // Increased from 5 to 45 for much faster movement
 
             // Faster projectiles
             this.baseSpeed = 8;  // Even faster starting speed
             this.maxSpeed = 15;  // Much faster maximum speed
 
             // More frequent spawns
-            this.spawnInterval = 30;  // Spawn every 0.5 seconds
-            this.minSpawnInterval = 20;  // Can get as fast as every 1/3 second
+            this.spawnInterval = 180;  // Changed from 300 to 180 (every 3 seconds)
+            this.minSpawnInterval = 180;
 
             // Tougher special power requirements
             this.specialPowerRequirement = 15000;  // 15 seconds without getting hit
@@ -237,7 +246,7 @@ class Scene4_5_js {
 
             // Add missiles array
             this.missiles = [];
-            this.heroSize = 50; // Add if not already present
+            this.heroSize = 40;  // Reduced from 50 to 40
 
             // Add completion dialogue sequence
             this.completionDialogues = [
@@ -273,22 +282,14 @@ class Scene4_5_js {
                 }
             });
 
-            // Add textbox sound
-            this.textboxSound = new Howl({
-                src: ['./assets/sounds/textbox.mp3'],
-                volume: 0.5,
-                onload: () => console.log("Textbox sound loaded"),
-                onloaderror: (id, err) => console.error("Error loading textbox sound:", err)
-            });
-
-            console.log('Scene4_5_js constructor completed');
+            console.log('Scene4_5 constructor completed');
         } catch (error) {
-            console.error('Error in Scene4_5_js constructor:', error);
+            console.error('Error in Scene4_5 constructor:', error);
         }
     }
 
     async preload() {
-        console.log('Scene4_5_js preload started');
+        console.log('Scene4_5 preload started');
         try {
             this.hopeSprite = await loadImage('assets/characters/hope.gif');
             console.log('Hope sprite loaded directly:', !!this.hopeSprite);
@@ -394,19 +395,12 @@ class Scene4_5_js {
 
                     // Draw Hope with floating movement
                     this.hopeMovement.angle += 0.02;
-                    let floatX = width - 200 + cos(this.hopeMovement.angle) * this.hopeMovement.radius;
-                    let floatY = height / 2 + sin(this.hopeMovement.angle) * this.hopeMovement.radius;
+                    let floatX = 80 + cos(this.hopeMovement.angle) * this.hopeMovement.radius;
+                    let floatY = 60 + sin(this.hopeMovement.angle) * this.hopeMovement.radius;
 
                     this.hope.x = floatX;
                     this.hope.y = floatY;
-
-                    // Draw Hope directly here instead of calling hope.draw()
-                    if (this.hope.sprite) {
-                        push();
-                        imageMode(CENTER);
-                        image(this.hope.sprite, this.hope.x, this.hope.y, 180, 180);
-                        pop();
-                    }
+                    this.hope.draw();
                 }
 
                 // Draw hero only if visible
@@ -479,50 +473,43 @@ class Scene4_5_js {
                 // Update and draw distractions
                 for (let i = this.distractions.length - 1; i >= 0; i--) {
                     let d = this.distractions[i];
+
+                    // Move distraction
                     d.x += d.velocity.x;
                     d.y += d.velocity.y;
                     d.rotation += d.rotationSpeed;
 
-                    // Check shield collision
-                    if (this.specialPowerActive &&
-                        dist(d.x, d.y, this.hero.x, this.hero.y) < (100 + 100)) {
-                        this.createExplosion(d.x, d.y);
-                        this.distractions.splice(i, 1);
-                        continue;
-                    }
-
-                    // Draw distraction with reduced size for 'computer' type
+                    // Draw distraction
                     push();
                     translate(d.x, d.y);
                     rotate(d.rotation);
-
-                    drawingContext.shadowBlur = 20 + sin(frameCount * 0.1) * 10;
-                    drawingContext.shadowColor = 'rgba(255, 0, 0, 0.5)';
-
                     imageMode(CENTER);
-                    if (d.type === 'computer') {
-                        image(this.distractionImages[d.type], 0, 0, d.size * 0.8, d.size * 0.8);  // Reduce size by 20%
-                    } else {
-                        image(this.distractionImages[d.type], 0, 0, d.size, d.size);
-                    }
+                    image(this.distractionImages[d.type], 0, 0, d.size, d.size);
                     pop();
 
                     // Check collision with hero
-                    if (this.hero.visible && dist(d.x, d.y, this.hero.x, this.hero.y) < (d.size + this.heroSize) / 2) {
-                        this.motivation = max(0, this.motivation - 34);
-                        this.lastHitTime = millis();
-                        this.hurtSound.play();
+                    if (this.hero.visible && dist(d.x, d.y, this.hero.x, this.hero.y) < (d.size + 30) / 2) {
+                        if (this.specialPowerActive) {
+                            // Destroy distraction if shield is active
+                            this.createExplosion(d.x, d.y);
+                            this.distractions.splice(i, 1);
+                        } else if (!this.invincible) {
+                            // Take damage only if not invincible and no shield
+                            this.motivation = max(0, this.motivation - 34);  // Changed from gameTimer to motivation
+                            this.distractions.splice(i, 1);
+                            this.lastHitTime = millis();
+                            if (this.hurtSound) this.hurtSound.play();
 
-                        // Add hit overlay
-                        this.hitOverlay.active = true;
-                        this.hitOverlay.startTime = millis();
-
-                        this.distractions.splice(i, 1);
+                            // Add hit overlay
+                            this.hitOverlay.active = true;
+                            this.hitOverlay.startTime = millis();
+                        }
                         continue;
                     }
 
                     // Remove if off screen
-                    if (d.x < -100 || d.x > width + 100 || d.y < -100 || d.y > height + 100) {
+                    if (d.x < -200 || d.x > width + 200 ||
+                        d.y < -200 || d.y > height + 200) {
                         this.distractions.splice(i, 1);
                     }
                 }
@@ -530,15 +517,27 @@ class Scene4_5_js {
                 // Spawn distractions based on time elapsed
                 if (this.gameStarted) {
                     const timeElapsed = 45 - this.gameTimer;
-
-                    // Adjust spawn interval to increase more slowly
-                    const spawnInterval = map(timeElapsed, 0, 45, 30, 12);  // Adjusted for 15% reduction
+                    // Start with more frequent spawns
+                    const spawnInterval = map(timeElapsed, 0, 45, 50, 30);  // Changed from 70,30 to 50,30
 
                     if (frameCount % floor(spawnInterval) === 0) {
-                        // Adjust number of distractions to increase more slowly
-                        const numDistractions = floor(map(timeElapsed, 0, 45, 1, 4));  // Adjusted for 15% reduction
-                        for (let i = 0; i < numDistractions; i++) {
-                            this.addNewDistraction();
+                        // Start with more spawns, still increase over time
+                        let numToSpawn = floor(map(timeElapsed, 0, 45, 2, 6));  // Changed from 1,6 to 2,6
+                        for (let i = 0; i < numToSpawn; i++) {
+                            // Higher initial cap
+                            if (this.distractions.length < map(timeElapsed, 0, 45, 10, 15)) {  // Changed from 8,15 to 10,15
+                                this.addNewDistraction();
+                            }
+                        }
+                    }
+
+                    // Earlier and more frequent waves
+                    if (timeElapsed > 20 && frameCount % 100 === 0) {  // Start at 20s instead of 25s
+                        let extraSpawns = floor(map(timeElapsed, 20, 45, 2, 4));  // Adjusted time range
+                        for (let i = 0; i < extraSpawns; i++) {
+                            if (this.distractions.length < 15) {
+                                this.addNewDistraction();
+                            }
                         }
                     }
 
@@ -716,6 +715,22 @@ class Scene4_5_js {
         } else if (key === ' ') {
             this.activateCannon();
         }
+
+        if (this.gameStarted) {
+            const speed = 60;  // Increased to 60 for very fast movement
+            if (keyCode === LEFT_ARROW || key === 'a') {
+                this.hero.velocity.x = -speed;
+            }
+            if (keyCode === RIGHT_ARROW || key === 'd') {
+                this.hero.velocity.x = speed;
+            }
+            if (keyCode === UP_ARROW || key === 'w') {
+                this.hero.velocity.y = -speed;
+            }
+            if (keyCode === DOWN_ARROW || key === 's') {
+                this.hero.velocity.y = speed;
+            }
+        }
     }
 
     drawCannon() {
@@ -819,46 +834,74 @@ class Scene4_5_js {
         const types = ['burger', 'computer', 'fourLoko'];
         const type = random(types);
 
+        // Spawn from off-screen positions
         let x, y, velX, velY;
         let side = floor(random(4));
 
+        // Calculate random target point somewhere in the canvas
+        let targetX = random(width * 0.2, width * 0.8);
+        let targetY = random(height * 0.2, height * 0.8);
+
+        // Get time-based speed multiplier
+        const timeElapsed = 45 - this.gameTimer;
+        const speedMultiplier = map(timeElapsed, 0, 45, 1, 1.8);  // Speed increases up to 1.8x
+
         switch (side) {
-            case 0:
-                x = random(width);
-                y = -50;
-                velX = random(-1, 1);  // Reduced horizontal speed
-                velY = random(1.5, 3);  // Reduced vertical speed
+            case 0:  // Top
+                x = random(-50, width + 50);
+                y = -100;
+                velX = random(-3, 3) * speedMultiplier;
+                velY = random(3, 5) * speedMultiplier;
                 break;
-            case 1:
-                x = width + 50;
-                y = random(height);
-                velX = random(-3, -1.5);  // Reduced horizontal speed
-                velY = random(-1, 1);  // Reduced vertical speed
+            case 1:  // Right
+                x = width + 100;
+                y = random(-50, height + 50);
+                velX = random(-5, -3) * speedMultiplier;
+                velY = random(-3, 3) * speedMultiplier;
                 break;
-            case 2:
-                x = random(width);
-                y = height + 50;
-                velX = random(-1, 1);  // Reduced horizontal speed
-                velY = random(-3, -1.5);  // Reduced vertical speed
+            case 2:  // Bottom
+                x = random(-50, width + 50);
+                y = height + 100;
+                velX = random(-3, 3) * speedMultiplier;
+                velY = random(-5, -3) * speedMultiplier;
                 break;
-            case 3:
-                x = -50;
-                y = random(height);
-                velX = random(1.5, 3);  // Reduced horizontal speed
-                velY = random(-1, 1);  // Reduced vertical speed
+            case 3:  // Left
+                x = -100;
+                y = random(-50, height + 50);
+                velX = random(3, 5) * speedMultiplier;
+                velY = random(-3, 3) * speedMultiplier;
                 break;
         }
 
-        const rotationSpeed = random(-0.01, 0.01);
+        // Calculate direction towards target point
+        let dirX = targetX - x;
+        let dirY = targetY - y;
+        let mag = sqrt(dirX * dirX + dirY * dirY);
+        dirX = dirX / mag;
+        dirY = dirY / mag;
+
+        // Tracking gets more aggressive over time
+        const trackingStrength = map(timeElapsed, 0, 45, 1.2, 2.0);
+        velX = velX + dirX * trackingStrength;
+        velY = velY + dirY * trackingStrength;
+
+        let size;
+        if (type === 'computer') {
+            size = 80;
+        } else if (type === 'fourLoko') {
+            size = 90;
+        } else {
+            size = 130;  // Increased burger size from 100 to 130
+        }
 
         this.distractions.push({
             type: type,
             x: x,
             y: y,
-            size: 100,  // Size remains 100
+            size: size,
             velocity: createVector(velX, velY),
             rotation: 0,
-            rotationSpeed: rotationSpeed
+            rotationSpeed: random(-0.1, 0.1)
         });
     }
 
@@ -869,17 +912,15 @@ class Scene4_5_js {
         this.hopeVisible = false;
 
         if (this.pokemonSiren) this.pokemonSiren.play();
-        if (this.gameSound) this.gameSound.play();
 
         setTimeout(() => {
             this.gameStarted = true;
             this.gameTimer = 45;
             this.lastSoundTime = 0;
             this.distractions = [];
-            this.dialogueComplete = true;  // Ensure dialogue is marked as complete
-            this.dialogueStarted = false;  // Reset dialogue state
 
             if (this.heartbeatSound) this.heartbeatSound.play();
+            if (this.wordgameSound) this.wordgameSound.play();
         }, 3000);
     }
 
@@ -1042,18 +1083,18 @@ class Scene4_5_js {
 
     updateHeroPosition() {
         if (this.hero.visible) {  // Ensure hero is visible
-            const speed = this.moveSpeed;
+            const speed = 7;  // Reduced from 10 to 7
 
-            if (keyIsDown(LEFT_ARROW) || keyIsDown(65)) { // Left arrow or 'A'
+            if (keyIsDown(LEFT_ARROW) || key === 'a') { // Left arrow or 'A'
                 this.hero.x = max(0, this.hero.x - speed);
             }
-            if (keyIsDown(RIGHT_ARROW) || keyIsDown(68)) { // Right arrow or 'D'
+            if (keyIsDown(RIGHT_ARROW) || key === 'd') { // Right arrow or 'D'
                 this.hero.x = min(width, this.hero.x + speed);
             }
-            if (keyIsDown(UP_ARROW) || keyIsDown(87)) { // Up arrow or 'W'
+            if (keyIsDown(UP_ARROW) || key === 'w') { // Up arrow or 'W'
                 this.hero.y = max(0, this.hero.y - speed);
             }
-            if (keyIsDown(DOWN_ARROW) || keyIsDown(83)) { // Down arrow or 'S'
+            if (keyIsDown(DOWN_ARROW) || key === 's') { // Down arrow or 'S'
                 this.hero.y = min(height, this.hero.y + speed);
             }
 
@@ -1067,7 +1108,7 @@ class Scene4_5_js {
         push();
         noStroke();
         let pulse = sin(frameCount * 0.1) * 10;
-        let gradient = drawingContext.createRadialGradient(0, 0, 0, 0, 0, this.heroSize + 70 + pulse);
+        let gradient = drawingContext.createRadialGradient(0, 0, 0, 0, 0, this.heroSize + 60 + pulse);  // Adjusted for smaller hero
         gradient.addColorStop(0, 'rgba(255, 255, 255, 0.7)');
         gradient.addColorStop(0.5, 'rgba(255, 255, 0, 0.5)');
         gradient.addColorStop(1, 'rgba(255, 255, 0, 0.2)');
@@ -1076,21 +1117,16 @@ class Scene4_5_js {
         let shieldX = this.hero.x + cos(frameCount * 0.1) * 15;
         let shieldY = this.hero.y + sin(frameCount * 0.1) * 15;
 
-        // Create jagged edges
+        // Create jagged edges for shield
         beginShape();
         for (let i = 0; i < TWO_PI; i += 0.1) {
-            let offset = random(-10, 10); // Jaggedness
-            let x = shieldX + (this.heroSize + 70 + pulse + offset) * cos(i);
-            let y = shieldY + (this.heroSize + 70 + pulse + offset) * sin(i);
+            let offset = random(-10, 10);
+            let x = shieldX + (this.heroSize + 60 + pulse + offset) * cos(i);
+            let y = shieldY + (this.heroSize + 60 + pulse + offset) * sin(i);
             vertex(x, y);
         }
         endShape(CLOSE);
 
-        // Add glowing effect
-        stroke(255, 255, 0, 150);
-        strokeWeight(3);
-        noFill();
-        ellipse(shieldX, shieldY, this.heroSize + 80 + pulse, this.heroSize + 80 + pulse);
         pop();
     }
 
@@ -1140,72 +1176,13 @@ class Scene4_5_js {
     }
 
     resetGame() {
-        // Reset game state
         this.gameOver = false;
-        this.gameStarted = false;  // Changed to false to ensure proper initialization
+        this.gameStarted = true;
         this.gameTimer = 45;
         this.motivation = 100;
         this.specialPowerTime = 0;
         this.distractions = [];
         this.lastHitTime = millis();
         this.hero.visible = true;
-
-        // Reset dialogue system
-        this.dialogueBox = new DialogueBox();
-        this.currentDialogue = 0;
-        this.dialogueComplete = false;
-        this.dialogueStarted = false;
-
-        // Reset sound flags
-        this.hasPlayedScream = false;
-        this.soundStarted = false;
-        this.doubtSoundPlayed = false;
-
-        // Stop all active sounds
-        if (this.pokemonSiren && this.pokemonSiren.playing()) this.pokemonSiren.stop();
-        if (this.scarySound && this.scarySound.playing()) this.scarySound.stop();
-        if (this.heartbeatSound && this.heartbeatSound.playing()) this.heartbeatSound.stop();
-        if (this.gameSound && this.gameSound.playing()) this.gameSound.stop();
-
-        // Reset positions
-        this.hero.x = width / 2;
-        this.hero.y = height / 2;
-        this.hope.x = width - 200;
-        this.hope.y = height / 2;
-        this.hopeVisible = true;
-
-        // Reset overlay and timing
-        this.flashOverlay.active = false;
-        this.flashOverlay.alpha = 0;
-        this.lastSoundTime = 0;
-        this.doorStartTime = null;
-
-        // Start the game sequence again
-        this.startGame();
-    }
-
-    showDialogueBox() {
-        // Play textbox sound when a new dialogue box is shown
-        if (this.textboxSound) this.textboxSound.play();
-
-        // Logic to display the dialogue box
-        // ... existing code for displaying dialogue ...
-    }
-
-    drawDistractions() {
-        for (let distraction of this.distractions) {
-            push();
-            imageMode(CENTER);
-
-            if (distraction.type === 'burger') {
-                // Increase the size of the burger
-                image(this.distractionImages.burger, distraction.x, distraction.y, 120, 120);  // Adjusted size
-            } else {
-                // Default size for other distractions
-                image(this.distractionImages[distraction.type], distraction.x, distraction.y, 100, 100);
-            }
-
-            pop();
-        }
     }
 }

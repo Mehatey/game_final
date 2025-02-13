@@ -2,7 +2,7 @@ html,
 body {
     margin: 0;
     padding: 0;
-    cursor: none !important;
+    cursor: none;
     overflow: hidden;
 }
 
@@ -11,22 +11,22 @@ main {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    cursor: none !important;
+    cursor: none;
 }
 
 canvas {
     display: block;
-    cursor: none !important;
+    cursor: none;
 }
 
 * {
-    cursor: none !important;
+    cursor: none;
 }
 
 button {
-    cursor: none !important;
+    cursor: none;
 }
 
 a {
-    cursor: none !important;
+    cursor: none;
 }

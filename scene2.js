@@ -12,7 +12,7 @@ class Scene2 {
         this.textComplete = false;
         this.reversing = false;
         this.squareSize = 15;
-        this.maxSquares = 300;
+        this.maxSquares = 1000;
         this.textBoxWidth = 0;
         this.textBoxHeight = 80;
         this.textPadding = 40;
@@ -25,30 +25,16 @@ class Scene2 {
         this.waitingForNext = false;
         this.buttonWidth = 200;
         this.buttonHeight = 60;
-        this.doorWidth = 0;
-        this.doorHeight = windowHeight;
-        this.doorStartTime = millis();
-        this.doorDuration = 4000; // 4 seconds
-        this.doorOpening = true;
-        this.doorGlow = 0;
-        this.warpLines = [];
-        for (let i = 0; i < 50; i++) {
-            this.warpLines.push({
-                x: random(width),
-                y: random(height),
-                speed: random(5, 15),
-                length: random(50, 150),
-                alpha: random(100, 255)
-            });
-        }
 
-        // Add sounds
-        this.typingSound = new Howl({
-            src: ['./assets/sounds/typing.mp3'],
-            volume: 0.3,
-            loop: true
-        });
+        // Initialize timing for squares and text
+        this.startTime = millis();
+        this.squaresStarted = false;
+        this.textStarted = false;
 
+        // Initialize typing sound
+        this.typingSound = null;
+
+        // Add entry sound
         this.entrySound = new Howl({
             src: ['./assets/sounds/entry.mp3'],
             volume: 0.5,
@@ -57,7 +43,7 @@ class Scene2 {
             }
         });
 
-        // Move video loading here
+        // Load videos
         const videoFiles = [
             './assets/videos/intro/meh01.mp4',
             './assets/videos/intro/meh02.mp4',
@@ -76,6 +62,22 @@ class Scene2 {
         });
     }
 
+    preload() {
+        try {
+            // Load typing sound
+            soundFormats('mp3');
+            this.typingSound = loadSound('./assets/sounds/typing.mp3', () => {
+                console.log('Typing sound loaded successfully');
+            }, (error) => {
+                console.error('Error loading typing sound:', error);
+            });
+
+            // Other preload code...
+        } catch (e) {
+            console.error('Error in Scene2 preload:', e);
+        }
+    }
+
     draw() {
         background(0);
 
@@ -84,125 +86,43 @@ class Scene2 {
             return;
         }
 
-        if (this.doorOpening) {
-            let elapsed = millis() - this.doorStartTime;
-            if (elapsed > 0) {
-                // Draw warp speed effect
+        let elapsed = millis() - this.startTime;
+
+        // Start squares after 1 second
+        if (elapsed > 1000 && !this.squaresStarted) {
+            this.squaresStarted = true;
+            this.squaresStartTime = millis();
+        }
+
+        // Draw and update squares
+        if (this.squaresStarted) {
+            if (!this.reversing) {
+                this.updateSpiral();
+            }
+
+            for (let square of this.squares) {
                 push();
-                strokeWeight(2);
-                for (let warpLine of this.warpLines) {
-                    stroke(255, 255, 255, warpLine.alpha);
-                    warpLine.x += warpLine.speed;
-                    if (warpLine.x > width) warpLine.x = 0;
-
-                    let angle = atan2(height / 2 - warpLine.y, width / 2 - warpLine.x);
-                    let startX = warpLine.x;
-                    let startY = warpLine.y;
-                    let endX = warpLine.x + cos(angle) * warpLine.length;
-                    let endY = warpLine.y + sin(angle) * warpLine.length;
-
-                    line(startX, startY, endX, endY);
-                }
-                pop();
-
-                // Calculate portal size
-                this.doorWidth = map(
-                    elapsed,
-                    0,
-                    this.doorDuration,
-                    0,
-                    windowWidth * 0.7
-                );
-
-                push();
-                drawingContext.save();
-
-                // Create portal shape
-                translate(width / 2, height / 2);
                 noFill();
-                beginShape();
-                for (let a = 0; a < TWO_PI; a += 0.1) {
-                    let xoff = map(cos(a + frameCount * 0.05), -1, 1, 0, 0.2);
-                    let yoff = map(sin(a + frameCount * 0.05), -1, 1, 0, 0.2);
-                    let r = this.doorWidth / 2;
-                    let x = r * cos(a) + noise(xoff, yoff, frameCount * 0.02) * 20;
-                    let y = r * sin(a) + noise(xoff, yoff + 5, frameCount * 0.02) * 20;
-                    vertex(x, y);
-                }
-                endShape(CLOSE);
-
-                // Add glow and portal effects
-                drawingContext.shadowBlur = 30;
-                drawingContext.shadowColor = 'rgba(0, 150, 255, 0.5)';
-
-                drawingContext.restore();
+                stroke(255, 255, 255, 100);
+                strokeWeight(1);
+                rect(square.x, square.y, this.squareSize, this.squareSize);
                 pop();
+            }
 
-                // Draw portal edge effects
-                push();
-                translate(width / 2, height / 2);
-                noFill();
-                for (let i = 0; i < 3; i++) {
-                    stroke(0, 150, 255, 255 - i * 50);
-                    strokeWeight(3 - i);
-                    beginShape();
-                    for (let a = 0; a < TWO_PI; a += 0.1) {
-                        let r = this.doorWidth / 2 + i * 5;
-                        let x = r * cos(a);
-                        let y = r * sin(a);
-                        vertex(x, y);
-                    }
-                    endShape(CLOSE);
-                }
-                pop();
-
-                if (elapsed >= this.doorDuration) {
-                    this.doorOpening = false;
-                }
+            // Only show text if not reversing
+            if (!this.reversing && millis() - this.squaresStartTime > 2000) {
+                this.drawText();
             }
         }
 
-        // Draw squares
-        for (let square of this.squares) {
-            push();
-            noFill();
-            stroke(255, 255, 255, 100);
-            strokeWeight(1);
-            rect(square.x, square.y, this.squareSize, this.squareSize);
-            pop();
-        }
-
-        if (!this.textComplete) {
-            this.drawText();
-        } else if (this.squares.length === 0) {
-            push();
-            rectMode(CENTER);
-
-            // Check if mouse is over button
-            let isHovered = this.isMouseOverButton(width / 2, height / 2, this.buttonWidth, this.buttonHeight);
-
-            // Button glow effect when hovered
-            if (isHovered) {
-                drawingContext.shadowBlur = 20;
-                drawingContext.shadowColor = 'rgba(255, 255, 0, 0.5)';
-                fill(255, 255, 0); // Yellow fill when hovered
-            } else {
-                fill(255);
-            }
-
-            // Draw button
-            rect(width / 2, height / 2, this.buttonWidth, this.buttonHeight, 10);
-
-            // Button text
-            textAlign(CENTER, CENTER);
-            textSize(20);
-            fill(0);
-            text("Enter Meh's World", width / 2, height / 2);
-            pop();
+        // Handle completion states
+        if (this.textComplete && this.squares.length === 0) {
+            this.drawEnterButton();
         }
 
         if (this.reversing && this.squares.length > 0) {
             this.squares.pop();
+            // Don't draw text while reversing
         }
     }
 
@@ -230,17 +150,24 @@ class Scene2 {
     }
 
     updateText() {
-        if (frameCount % 6 === 0 && this.currentSentence < this.sentences.length) {
+        if (this.typingSound) {
+            if (!this.typingSound.isPlaying()) {
+                try {
+                    this.typingSound.play();
+                } catch (e) {
+                    console.error('Error playing typing sound:', e);
+                }
+            }
+        }
+
+        // Changed from frameCount % 6 to frameCount % 3 for faster typing
+        if (frameCount % 3 === 0 && this.currentSentence < this.sentences.length) {
             const currentSentenceText = this.sentences[this.currentSentence];
             if (this.charIndex < currentSentenceText.length) {
-                // Make sure typing sound plays for each character
-                if (!this.typingSound.isPlaying()) {
-                    this.typingSound.play();
-                }
                 this.currentText += currentSentenceText.charAt(this.charIndex);
                 this.charIndex++;
             } else {
-                this.typingSound.stop();
+                if (this.typingSound) this.typingSound.stop();
                 if (!this.waitingForNext) {
                     this.waitingForNext = true;
                     setTimeout(() => {
@@ -260,13 +187,15 @@ class Scene2 {
     }
 
     updateSpiral() {
-        if (frameCount % 2 === 0 && this.squares.length < this.maxSquares) {
+        // Changed from frameCount % 12 to frameCount % 8 for medium speed
+        if (frameCount % 8 === 0 && this.squares.length < this.maxSquares) {
             let angle = this.squares.length * 0.5;
-            let radius = this.squares.length * 2;
+            let radius = this.squares.length * 2.5;  // Increased from 2 to 2.5 for bigger spiral
             let x = width / 2 + cos(angle) * radius;
             let y = height / 2 + sin(angle) * radius;
 
-            if (x >= 0 && x <= width && y >= 0 && y <= height) {
+            // Expanded bounds check to allow squares closer to edges
+            if (x >= -50 && x <= width + 50 && y >= -50 && y <= height + 50) {
                 this.squares.push({ x, y });
             }
         }
@@ -288,9 +217,20 @@ class Scene2 {
     }
 
     startVideoSequence() {
-        // Clean up all sounds before starting videos
-        if (this.typingSound && this.typingSound.isPlaying()) {
-            this.typingSound.stop();
+        // Stop entry sound when videos start
+        if (this.entrySound) {
+            this.entrySound.stop();
+        }
+
+        // Stop typing sound
+        if (this.typingSound) {
+            try {
+                if (this.typingSound.isPlaying()) {
+                    this.typingSound.stop();
+                }
+            } catch (e) {
+                console.error('Error stopping typing sound:', e);
+            }
         }
 
         this.videoPlaying = true;
@@ -327,10 +267,18 @@ class Scene2 {
     }
 
     cleanup() {
-        // Stop all sounds
-        if (this.typingSound && this.typingSound.isPlaying()) {
-            this.typingSound.stop();
+        // Add sound cleanup
+        if (this.typingSound) {
+            try {
+                if (this.typingSound.isPlaying()) {
+                    this.typingSound.stop();
+                }
+            } catch (e) {
+                console.error('Error stopping typing sound:', e);
+            }
         }
+
+        // Stop all sounds
         if (this.entrySound && this.entrySound.isPlaying()) {
             this.entrySound.stop();
         }
@@ -342,6 +290,33 @@ class Scene2 {
                 video.remove();
             }
         });
+    }
+
+    drawEnterButton() {
+        push();
+        rectMode(CENTER);
+
+        // Check if mouse is over button
+        let isHovered = this.isMouseOverButton(width / 2, height / 2, this.buttonWidth, this.buttonHeight);
+
+        // Button glow effect when hovered
+        if (isHovered) {
+            drawingContext.shadowBlur = 20;
+            drawingContext.shadowColor = 'rgba(255, 255, 0, 0.5)';
+            fill(255, 255, 0); // Yellow fill when hovered
+        } else {
+            fill(255);
+        }
+
+        // Draw button
+        rect(width / 2, height / 2, this.buttonWidth, this.buttonHeight, 10);
+
+        // Button text
+        textAlign(CENTER, CENTER);
+        textSize(20);
+        fill(0);
+        text("Enter Meh's World", width / 2, height / 2);
+        pop();
     }
 }
 
