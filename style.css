@@ -1,6 +1,9 @@
-html, body {
+html,
+body {
     margin: 0;
     padding: 0;
+    cursor: none !important;
+    overflow: hidden;
 }
 
 main {
@@ -8,8 +11,22 @@ main {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
+    cursor: none !important;
 }
 
 canvas {
     display: block;
+    cursor: none !important;
+}
+
+* {
+    cursor: none !important;
+}
+
+button {
+    cursor: none !important;
+}
+
+a {
+    cursor: none !important;
 }

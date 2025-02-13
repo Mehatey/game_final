@@ -31,12 +31,15 @@ function setup() {
     } else {
         console.error('Scene1 class not found');
     }
+
+    noCursor();  // Hide default cursor
 }
 
 function draw() {
     if (currentScene) {
         currentScene.draw();
     }
+    CustomCursor.draw();  // Draw cursor last, after all scenes
 }
 
 function mousePressed() {

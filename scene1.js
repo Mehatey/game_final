@@ -1,5 +1,15 @@
 class Scene1 {
     constructor() {
+        document.body.style.cursor = 'none';
+        const elements = document.querySelectorAll('*');
+        elements.forEach(element => {
+            element.style.cursor = 'none';
+        });
+
+        document.querySelectorAll('button').forEach(button => {
+            button.style.cursor = 'none';
+        });
+
         this.font = null;
         this.backgroundImage = null;
         this.heroImages = [];
@@ -74,19 +84,10 @@ class Scene1 {
         this.fadeStartTime = millis();
         this.fadeInDuration = 1000;
 
-        // Start blur after door starts opening
-        this.blurAmount = 1000;
-        this.blurStartTime = this.fadeStartTime;
-        this.blurDuration = 1000;
-
         // Button timing
         this.buttonStartTime = millis();
         this.buttonDelay = 0; // 8 seconds delay for buttons
         this.showButtons = false;
-
-        // Auto-play sound
-        this.soundStarted = false;
-        this.soundLoaded = false;
 
         this.playButtonClicked = false;
 
@@ -97,7 +98,6 @@ class Scene1 {
             castle: null,
             firing: null
         };
-        this.isCastleMusicPlaying = false;
 
         // Add button sound and hover state
         this.sounds = {
@@ -111,80 +111,10 @@ class Scene1 {
 
         this.gradientOffset = 0; // Initialize gradient offset
 
-        // Add debug button
-        this.debugButton = createButton('Scene4');
-        this.debugButton.position(20, height - 40);  // Position in bottom left
-        this.debugButton.style('background-color', '#FF0000');  // Red color
-        this.debugButton.style('color', 'white');
-        this.debugButton.style('border', 'none');
-        this.debugButton.style('padding', '10px 20px');
-        this.debugButton.style('cursor', 'pointer');
-        this.debugButton.style('font-family', 'ARCADE');
-
-        // Add click handler
-        this.debugButton.mousePressed(() => {
-            this.cleanup();  // Use the same cleanup method
-            currentScene = new Scene4();
-            if (currentScene.preload) {
-                currentScene.preload();
-            }
-        });
-
-        // Add new Scene5 debug button
-        this.debugButtonScene5 = createButton('Scene5');
-        this.debugButtonScene5.position(20, height - 80);  // Position above the Scene4 button
-        this.debugButtonScene5.style('background-color', '#FF0000');
-        this.debugButtonScene5.style('color', 'white');
-        this.debugButtonScene5.style('border', 'none');
-        this.debugButtonScene5.style('padding', '10px 20px');
-        this.debugButtonScene5.style('cursor', 'pointer');
-        this.debugButtonScene5.style('font-family', 'ARCADE');
-
-        // Add click handler
-        this.debugButtonScene5.mousePressed(() => {
-            this.cleanup();  // Use the same cleanup method
-            currentScene = new Scene5();
-            if (currentScene.preload) {
-                currentScene.preload();
-            }
-        });
-
-        this.debugButtonScene4_5 = createButton('Scene4.5');
-        this.debugButtonScene4_5.position(20, height - 120);  // Position above the other debug buttons
-        this.debugButtonScene4_5.style('background-color', '#FF0000');
-        this.debugButtonScene4_5.style('color', 'white');
-        this.debugButtonScene4_5.style('border', 'none');
-        this.debugButtonScene4_5.style('padding', '10px 20px');
-        this.debugButtonScene4_5.style('cursor', 'pointer');
-        this.debugButtonScene4_5.style('font-family', 'ARCADE');
-
-        // Add click handler
-        this.debugButtonScene4_5.mousePressed(() => {
-            this.cleanup();
-            currentScene = new Scene4_5();
-            if (currentScene.preload) {
-                currentScene.preload();
-            }
-        });
-
-        this.scene10Button = {
-            x: width - 100,
-            y: 0,
-            width: 80,
-            height: 30
-        };
-
         this.state = 'initial_play';  // New initial state
         this.coverImage = null;
-        this.gridSize = 20;
-        this.squares = [];
-        this.revealDuration = 6000;
         this.startTime = millis();
-        this.titleOpacity = 0;
-
         this.titleSize = 180;  // Half of 360
-        this.revealRadius = 100;  // Size of the reveal circle
-        this.imageRevealed = new Array(windowWidth).fill().map(() => new Array(windowHeight).fill(false));
         this.revealProgress = 0;
 
         this.revealedAreas = [];
@@ -192,7 +122,7 @@ class Scene1 {
 
         this.waveOffset = 0;
         this.waveSpeed = 0.005;  // Very slow for gentle movement
-        this.waveAmplitude = 5;  // Small amplitude for subtle effect
+        this.waveAmplitude = 7;  // Small amplitude for subtle effect
 
         this.revealedLetters = 0;
 
@@ -216,9 +146,11 @@ class Scene1 {
 
         // Add new state properties
         this.artboardState = {
-            x: width,  // Start from right edge of screen
-            scrollSpeed: 8,
-            image: null
+            x: 0,
+            scrollSpeed: 5,  // Reduced from 8 to 6
+            autoScroll: true,
+            startDelay: 2000,
+            startTime: null
         };
 
         // Add typewriter state
@@ -233,16 +165,11 @@ class Scene1 {
             ],
             currentLine: 0,
             currentChar: 0,
-            isDeleting: false,
-            typingSpeed: 40,
-            deletingSpeed: 15,
             lineDelay: 500,
             lastTyped: 0,
             currentCharIndex: 0
         };
 
-        // Add typing sound
-        this.typingSound = loadSound('./assets/sounds/typing.mp3');
 
         // Add positions for scattered text
         this.scatteredPositions = this.typewriterState.lines.map(() => ({
@@ -254,14 +181,6 @@ class Scene1 {
         this.overlayAlpha = 0;
         this.targetOverlayAlpha = 0;
         this.overlayFadeSpeed = 0.1;  // Controls fade speed (0.1 = 0.5 seconds approx)
-
-        // Try to start audio immediately
-        if (this.hobbitSound) {
-            this.hobbitSound.play().catch(e => {
-                console.log("Auto-play prevented, will play on user interaction");
-                // Will play on button click as fallback
-            });
-        }
 
         // For thunder overlay
         this.thunderGif = null;
@@ -278,7 +197,7 @@ class Scene1 {
         this.rainSound = null;
         this.rainStarted = false;
 
-        this.rainDrops = Array(400).fill().map(() => ({
+        this.rainDrops = Array(800).fill().map(() => ({
             x: random(width),
             y: random(height),
             speed: random(6, 15),  // Back to original speed
@@ -289,12 +208,6 @@ class Scene1 {
         this.showInitialButton = true;  // New flag for initial button state
         this.initialButtonHovered = false;
 
-        // Add noise texture properties
-        this.noiseOffset = 0;
-        this.noiseScale = 0.002;
-
-        // In constructor, add heartbeat sound
-        this.heartbeatSound = loadSound('./assets/sounds/heartbeat.mp3');
 
         // Add dissolve effect properties
         this.dissolveStartTime = 0;
@@ -316,111 +229,111 @@ class Scene1 {
             height: 60,
             text: "START"
         };
+
+        // Add this in the constructor, where other state properties are initialized
+        this.hero3State = {
+            x: 100,                    // Start from left side
+            y: height * 0.8,          // Near bottom of screen
+            speed: 2,                 // Reduced from 8 to 2 for slower movement
+            direction: 'front',
+            size: 200,
+            images: {
+                front: null,
+                left: null,
+                right: null,
+                dance: null
+            }
+        };
+
+        // If you have a rain visual effect, we can also adjust its parameters:
+        this.rainSystem = {
+            drops: 200,          // Increased number of drops
+            speed: 15,           // Slightly faster
+            thickness: 2,        // Slightly thicker drops
+            opacity: 180         // More visible
+        };
+
+        // In constructor, remove any auto-playing sounds except rain
+        this.rainSound = loadSound('./assets/sounds/rain.mp3', () => {
+            // Don't auto-play, wait for Let's Go button
+            this.rainLoaded = true;
+        });
+
+        // In constructor
+        this.jokerSound = loadSound('./assets/sounds/joker.mp3');  // Remove auto-play callback
+
+        // In constructor, add new sounds
+        this.fearSound = loadSound('./assets/sounds/fear.mp3');
+        this.empireSound = loadSound('./assets/sounds/Empire.mp3');
+
+        // Add sound manager
+        this.soundManager = {
+            playSound: (sound) => {
+                if (sound && !sound.isPlaying()) {
+                    try {
+                        sound.play();
+                    } catch (e) {
+                        console.log("Sound play failed, retrying...");
+                        setTimeout(() => {
+                            try {
+                                sound.play();
+                            } catch (e) {
+                                console.log("Sound retry failed");
+                            }
+                        }, 100);
+                    }
+                }
+            },
+            stopSound: (sound) => {
+                if (sound && sound.isPlaying()) {
+                    try {
+                        sound.stop();
+                    } catch (e) {
+                        console.log("Sound stop failed");
+                    }
+                }
+            }
+        };
+
+        // Use soundManager instead of direct play/stop
+        this.soundManager.playSound(this.buttonSound);
+        this.soundManager.stopSound(this.rainSound);
+
+        // Add event listener to prevent cursor showing on hover
+        document.addEventListener('mouseover', (e) => {
+            e.target.style.cursor = 'none';
+        });
     }
 
     preload() {
-        // Load all assets with correct paths
-        this.font = loadFont('./assets/fonts/ARCADE.TTF');
-        this.backgroundImage = loadImage('./assets/fantasy.gif');
-        this.heroImages = [
-            loadImage('./assets/characters/meh0/hero1still.png'),
-            loadImage('./assets/characters/meh0/hero1right.png'),
-            loadImage('./assets/characters/meh0/hero1up.png'),
-            loadImage('./assets/characters/meh0/hero1left.png')
-        ];
-        this.artboardState.image = loadImage('./assets/backgrounds/Artboard1.png');
+        try {
+            // Load assets
+            this.font = loadFont('./assets/fonts/ARCADE.TTF');
+            this.backgroundImage = loadImage('./assets/fantasy.gif');
+            this.heroImages = [
+                loadImage('./assets/characters/meh0/hero1still.png'),
+                loadImage('./assets/characters/meh0/hero1right.png'),
+                loadImage('./assets/characters/meh0/hero1up.png'),
+                loadImage('./assets/characters/meh0/hero1left.png')
+            ];
+            this.artboardState.image = loadImage('./assets/backgrounds/Artboard1.png');
 
-        // Load all sounds
-        soundFormats('mp3');
-        this.buttonSound = loadSound('./assets/sounds/button.mp3');
-        this.typingSound = loadSound('./assets/sounds/typing.mp3');
-        this.hobbitSound = loadSound('./assets/sounds/hobbit.mp3', () => {
-            this.soundLoaded = true;
-        });
-
-        // Load cover image if needed
-        this.coverImage = loadImage('./assets/backgrounds/cover.png');
-
-        this.state1Background = loadImage('./assets/backgrounds/state1cover.png');
-
-        this.thunderGif = loadImage('./assets/backgrounds/thunder.gif');
-        this.thunder2Gif = loadImage('./assets/backgrounds/thunder2.gif');
-        this.rainSound = loadSound('./assets/sounds/rain.mp3');
-    }
-
-    // Sound control methods
-    playSoundEffect(soundName) {
-        if (this.soundEffects[soundName] && !this.soundEffects[soundName].isPlaying()) {
-            this.soundEffects[soundName].play();
-        }
-    }
-
-    startCastleMusic() {
-        if (this.soundEffects.castle && !this.isCastleMusicPlaying) {
-            this.soundEffects.castle.loop();
-            this.isCastleMusicPlaying = true;
-        }
-    }
-
-    stopCastleMusic() {
-        if (this.soundEffects.castle && this.isCastleMusicPlaying) {
-            this.soundEffects.castle.stop();
-            this.isCastleMusicPlaying = false;
-        }
-    }
-
-    // Clean up sounds when scene changes
-    cleanup() {
-        // First handle sound cleanup
-        if (this.sound && this.sound.isPlaying()) {
-            this.sound.stop();
-            this.sound.disconnect();
-        }
-
-        if (this.soundEffects) {
-            Object.values(this.soundEffects).forEach(sound => {
-                if (sound && sound.isPlaying()) {
-                    sound.stop();
-                    sound.disconnect();
-                }
+            // Load sounds once
+            soundFormats('mp3');
+            this.hobbitSound = loadSound('./assets/sounds/hobbit.mp3', () => {
+                this.soundLoaded = true;
             });
-        }
+            this.rainSound = loadSound('./assets/sounds/rain.mp3', () => {
+                this.rainLoaded = true;
+            });
 
-        if (this.sounds && this.sounds.button && this.sounds.button.isPlaying()) {
-            this.sounds.button.stop();
-            this.sounds.button.disconnect();
-        }
-
-        // Suspend and reset audio context
-        getAudioContext().suspend();
-        getAudioContext().close().then(() => {
-            // Reset all sound-related flags
-            this.soundStarted = false;
-            this.buttonHovered = false;
-            this.isCastleMusicPlaying = false;
-        });
-
-        // Remove ALL debug buttons
-        if (this.debugButton) {
-            this.debugButton.remove();
-        }
-        if (this.debugButtonScene5) {
-            this.debugButtonScene5.remove();
-        }
-        if (this.debugButtonScene4_5) {
-            this.debugButtonScene4_5.remove();
-        }
-
-        // Remove any other p5 elements that might be lingering
-        removeElements();
-
-        // Clear the canvas
-        clear();
-        background(0);
-
-        if (this.hobbitSound && this.hobbitSound.isPlaying()) {
-            this.hobbitSound.stop();
-            this.hobbitSound.disconnect();
+            // Load other assets
+            this.coverImage = loadImage('./assets/backgrounds/cover.png');
+            this.state1Background = loadImage('./assets/backgrounds/state1cover.png');
+            this.thunderGif = loadImage('./assets/backgrounds/thunder.gif');
+            this.thunder2Gif = loadImage('./assets/backgrounds/thunder2.gif');
+        } catch (e) {
+            console.error('Error loading assets:', e);
         }
     }
 
@@ -707,108 +620,55 @@ class Scene1 {
         if (this.state === 'reveal') {
             this.drawSoundPrompt();
         } else if (this.state === 'artboard') {
-            push();
-
-            // Scale image to fit height while maintaining aspect ratio
-            let scale = height / this.artboardState.image.height;
-            let scaledWidth = this.artboardState.image.width * scale;
-
             background(0);
 
-            // Draw scrolling artboard
-            image(this.artboardState.image,
-                this.artboardState.x, 0,
-                scaledWidth, height);
+            if (this.artboardState.image) {
+                let scale = height / this.artboardState.image.height;
+                let scaledWidth = this.artboardState.image.width * scale;
 
-            // Increase scroll speed
-            this.artboardState.x -= 4;  // Changed from 0.8 to 1.5
+                // Initialize start time if not set
+                if (!this.artboardState.startTime) {
+                    this.artboardState.startTime = millis();
+                }
 
-            // Reduce constant width for text box
-            let constantWidth = 600;  // Reduced from 900 to 600
+                // Draw artboard
+                image(this.artboardState.image, this.artboardState.x, 0, scaledWidth, height);
 
-            if (this.typewriterState.currentLine < this.typewriterState.lines.length) {
-                let currentText = this.typewriterState.lines[this.typewriterState.currentLine];
+                // Only start scrolling after delay
+                if (millis() - this.artboardState.startTime > 2000) {  // 2 second delay
+                    if (this.artboardState.x > -scaledWidth) {
+                        this.artboardState.x -= 5;  // Keep current scroll speed
+                    }
+                }
 
+                // Update text based on scroll position
+                let scrollProgress = -this.artboardState.x / (scaledWidth - width);
+                let lineIndex = floor(scrollProgress * this.typewriterState.lines.length);
+                this.typewriterState.currentLine = constrain(lineIndex, 0, this.typewriterState.lines.length - 1);
+
+                // Check for transition to state 4
+                if (this.artboardState.x <= -scaledWidth) {
+                    this.state = 4;
+                }
+
+                // Draw text
                 push();
-                textSize(24);
-                let padding = 20;
-                let boxHeight = (textSize() + padding) * 1.4;
+                fill(255);
+                textAlign(CENTER, BOTTOM);
+                textSize(48);
 
-                // Create inner shadow gradient
-                let gradient = drawingContext.createLinearGradient(
-                    width / 2 - textWidth(currentText) / 2,
-                    height - boxHeight / 2,
-                    width / 2 - textWidth(currentText) / 2,
-                    height + boxHeight / 2
-                );
-                gradient.addColorStop(0, 'rgba(50, 50, 50, 0.95)');
-                gradient.addColorStop(0.4, 'rgba(20, 20, 20, 0.95)');
-                gradient.addColorStop(1, 'rgba(5, 5, 5, 0.95)');
-
-                drawingContext.fillStyle = gradient;
-                fill(0, 0, 0, 180);
-                noStroke();
-                rectMode(CENTER);
-                rect(width / 2, height - 50,
-                    constantWidth,
-                    boxHeight,
-                    3);
-
-                // Text fade in/out
-                if (!this.textFadeStartTime) {
-                    this.textFadeStartTime = millis();
-                }
-
-                let fadeInDuration = 1000;     // Keep 1 second fade in
-                let showDuration = 4000;      // Increased from 2000 to 4000 (4 seconds show time)
-                let fadeOutDuration = 1000;   // Keep 1 second fade out
-                let totalDuration = fadeInDuration + showDuration + fadeOutDuration;
-
-                let elapsed = millis() - this.textFadeStartTime;
-                let alpha = 255;
-
-                if (elapsed < fadeInDuration) {
-                    alpha = map(elapsed, 0, fadeInDuration, 0, 255);
-                } else if (elapsed > fadeInDuration + showDuration) {
-                    alpha = map(elapsed, fadeInDuration + showDuration, totalDuration, 255, 0);
-                }
-
-                // Draw text with current alpha
+                // Add glow and animations
+                drawingContext.shadowBlur = 15;
+                drawingContext.shadowColor = 'rgba(255, 255, 255, 0.8)';
+                let alpha = map(sin(frameCount * 0.03), -1, 1, 150, 255);
                 fill(255, alpha);
-                noStroke();
-                textAlign(CENTER, CENTER);
-                text(currentText, width / 2, height - 50);  // Align with box y-position
+                let size = map(sin(frameCount * 0.02), -1, 1, 44, 52);
+                textSize(size);
 
-                // Move to next line after total duration
-                if (elapsed > totalDuration) {
-                    this.typewriterState.currentLine++;
-                    this.textFadeStartTime = null;
-                }
+                text(this.typewriterState.lines[this.typewriterState.currentLine],
+                    width / 2, height - 50);
                 pop();
             }
-
-            // Remove automatic transition after last line
-            // Only check for scroll position for transition
-            if (this.artboardState.x <= -scaledWidth) {
-                if (!this.crossDissolveStart) {
-                    this.crossDissolveStart = millis();
-                }
-
-                let dissolveProgress = (millis() - this.crossDissolveStart) / 3000;
-                dissolveProgress = constrain(dissolveProgress, 0, 1);
-
-                // Just fade to black and go to state 4
-                push();
-                fill(0, dissolveProgress * 255);
-                rect(0, 0, width, height);
-                pop();
-
-                if (dissolveProgress >= 1) {
-                    this.state = 4;  // Go directly to state 4
-                }
-            }
-
-            pop();
         } else {
             background(0);
             console.log('Drawing scene');
@@ -897,8 +757,10 @@ class Scene1 {
             }
         }
 
-        // Draw custom cursor on top
+        // Always draw custom cursor last
+        push();
         CustomCursor.draw();
+        pop();
     }
 
 
@@ -1082,25 +944,20 @@ class Scene1 {
 
     checkHoverEffects() {
         let isAnyButtonHovered = false;
-
-        // ONLY check hover effects and play sounds in state 4
-        if (this.state === 4) {
-            Object.values(this.buttons).forEach(button => {
-                if (this.isMouseOver(button)) {
-                    isAnyButtonHovered = true;
-                    if (!this.buttonHovered) {
-                        this.buttonSound.currentTime = 0;
+        Object.values(this.buttons).forEach(button => {
+            if (this.isMouseOver(button)) {
+                isAnyButtonHovered = true;
+                if (!this.buttonHovered) {
+                    this.buttonHovered = true;
+                    if (this.buttonSound && !this.buttonSound.isPlaying()) {
                         this.buttonSound.play();
-                        this.buttonHovered = true;
                     }
                 }
-            });
-
-            if (!isAnyButtonHovered) {
-                this.buttonHovered = false;
-                this.buttonSound.pause();
-                this.buttonSound.currentTime = 0;
             }
+        });
+
+        if (!isAnyButtonHovered) {
+            this.buttonHovered = false;
         }
     }
 
@@ -1139,31 +996,8 @@ class Scene1 {
         pop();
     }
 
-    isMouseOverButton(x, y, w, h) {
-        return mouseX > x - w / 2 && mouseX < x + w / 2 &&
-            mouseY > y - h / 2 && mouseY < y + h / 2;
-    }
-
     drawCustomCursor() {
         CustomCursor.draw();  // Use the cube cursor instead of circles
-    }
-
-    isMouseOverAnyButton() {
-        return Object.values(this.buttons).some(button => this.isMouseOverButton(button.x, button.y, button.width, button.height));
-    }
-
-    drawButtons() {
-        Object.values(this.buttons).forEach(button => {
-            push();
-            fill(255, 204); // 80% opacity
-            rectMode(CENTER);
-            rect(button.x, button.y, button.width, button.height);
-            fill(0);
-            textSize(20);
-            textAlign(CENTER, CENTER);
-            text(button.text, button.x, button.y);
-            pop();
-        });
     }
 
     mousePressed() {
@@ -1183,12 +1017,24 @@ class Scene1 {
                 mouseY > buttonY - buttonHeight / 2 &&
                 mouseY < buttonY + buttonHeight / 2) {
 
-                // Only start rain sound
-                if (this.rainSound) {
-                    this.rainSound.setVolume(1.0);
+                // Ensure clean sound start
+                if (this.rainSound && this.rainSound.isLoaded()) {
+                    this.rainSound.stop();  // Stop any existing playback
                     this.rainSound.play();
                     this.rainSound.loop();
-                    this.rainStarted = true;
+                }
+
+                // Sequential sound playback
+                if (this.fearSound && this.fearSound.isLoaded()) {
+                    this.fearSound.play();
+
+                    // Chain the other sounds
+                    this.fearSound.onended(() => {
+                        if (this.jokerSound) this.jokerSound.play();
+                        this.jokerSound.onended(() => {
+                            if (this.empireSound) this.empireSound.play();
+                        });
+                    });
                 }
 
                 this.showInitialButton = false;
@@ -1199,67 +1045,46 @@ class Scene1 {
             return;
         }
 
-        // Scene 4 button
-        if (mouseX > width / 2 - 100 && mouseX < width / 2 + 100 &&
-            mouseY > height / 2 - 120 && mouseY < height / 2 - 70) {
-            // Remove all elements and clear canvas
-            removeElements();  // This will remove any p5 elements
-            clear();
-            background(0);
-
-            // Force cleanup of any existing scenes
-            if (window.currentScene && window.currentScene.cleanup) {
-                window.currentScene.cleanup();
-            }
-
-            setTimeout(() => {
-                window.location.href = 'scene4.html';
-            }, 100);
-        }
-
-        // Scene 5 button
-        if (mouseX > width / 2 - 100 && mouseX < width / 2 + 100 &&
-            mouseY > height / 2 - 40 && mouseY < height / 2 + 10) {
-            // Remove all elements and clear canvas
-            removeElements();  // This will remove any p5 elements
-            clear();
-            background(0);
-
-            // Force cleanup of any existing scenes
-            if (window.currentScene && window.currentScene.cleanup) {
-                window.currentScene.cleanup();
-            }
-
-            setTimeout(() => {
-                window.location.href = 'scene5.html';
-            }, 100);
-        }
-
-        // Start music on any click if not already playing
-        this.startBackgroundMusic();
-
         if (this.initialState && !this.rainStarted && this.rainSound) {
             this.rainSound.play();
             this.rainSound.loop();
             this.rainStarted = true;
         }
 
-        // In mousePressed(), update the top-right button handler:
+        // In mousePressed(), update the triangle button handler
         if (this.initialState) {
             let buttonSize = 50;
             let buttonX = width - 50;
             let buttonY = 50;
 
             if (dist(mouseX, mouseY, buttonX, buttonY) < buttonSize / 2) {
-                if (this.rainSound) {
+                console.log("Triangle button clicked"); // Debug log
+
+                // Stop ALL state 1 sounds
+                if (this.rainSound && this.rainSound.isPlaying()) {
                     this.rainSound.stop();
                 }
-                if (this.hobbitSound && !this.hobbitSound.isPlaying()) {
+                if (this.jokerSound && this.jokerSound.isPlaying()) {
+                    this.jokerSound.stop();
+                }
+                if (this.fearSound && this.fearSound.isPlaying()) {
+                    this.fearSound.stop();
+                }
+                if (this.empireSound && this.empireSound.isPlaying()) {
+                    this.empireSound.stop();
+                }
+
+                // Start hobbit sound for state 2
+                if (this.hobbitSound) {
                     this.hobbitSound.play();
                 }
+
+                // Update state
                 this.initialState = false;
                 this.state = 'reveal';
                 this.showInitialButton = false;
+
+                console.log("New state:", this.state); // Debug log
                 return;
             }
         }
@@ -1275,11 +1100,49 @@ class Scene1 {
                 if (isHovered) {
                     // Transition to artboard state (state 3)
                     this.state = 'artboard';
-                    this.artboardState.x = width;  // Reset scroll position
-                    this.typewriterState.currentLine = 0;  // Reset typewriter
+                    this.artboardState.x = 0;  // Start from left edge instead of width
+                    this.typewriterState.currentLine = 0;
                     this.textFadeStartTime = null;
+                    this.hero3State.x = 100;  // Reset hero position
                     return;
                 }
+            }
+        }
+
+        // In mousePressed(), update state 4 button handlers
+        if (this.state === 4) {
+            try {
+                // Skip Cinematic -> Scene3
+                if (this.isMouseOver(this.buttons.skipCinematic)) {
+                    console.log("Skip Cinematic clicked");
+                    if (this.buttonSound) this.buttonSound.play();
+                    this.cleanup();
+                    currentScene = new Scene3();
+                    if (currentScene.preload) currentScene.preload();
+                    return;
+                }
+
+                // Begin Journey -> Scene2
+                if (this.isMouseOver(this.buttons.beginJourney)) {
+                    console.log("Begin Journey clicked");
+                    if (this.buttonSound) this.buttonSound.play();
+                    this.cleanup();
+                    currentScene = new Scene2();
+                    if (currentScene.preload) currentScene.preload();
+                    return;
+                }
+
+                // Main Battle -> Scene6
+                if (this.isMouseOver(this.buttons.straightToMainBattle)) {
+                    console.log("Main Battle clicked");
+                    if (this.buttonSound) this.buttonSound.play();
+                    this.cleanup();
+                    currentScene = new Scene6();
+                    if (currentScene.preload) currentScene.preload();
+                    return;
+                }
+            } catch (e) {
+                console.error('Error in state 4 button handler:', e);
             }
         }
     }
@@ -1413,43 +1276,21 @@ class Scene1 {
                 push();
                 translate(anim.x, anim.y);
 
-                if (anim.hoverColor) {
-                    if (anim.hover) {
-                        let time = frameCount * 0.05;
-                        let rotateX = sin(time) * 0.2;
-                        let rotateY = cos(time) * 0.2;
+                if (anim.hover) {
+                    let time = frameCount * 0.0001; // Much slower
+                    let slowerTime = frameCount * 0.00005; // Much slower
+                    let rotateX = sin(time) * 0.05; // Smaller rotation
+                    let rotateY = cos(slowerTime) * 0.05;
 
-                        drawingContext.transform(
-                            1 + rotateX, 0,
-                            rotateY, 1,
-                            0, 0
-                        );
-
-                        let color = anim.hoverColor;
-                        let darkStroke = {
-                            r: color.r * 0.6,
-                            g: color.g * 0.6,
-                            b: color.b * 0.6
-                        };
-
-                        strokeWeight(0.5);
-                        stroke(darkStroke.r, darkStroke.g, darkStroke.b);
-                        fill(color.r, color.g, color.b);
-
-                        // Glow effects
-                        drawingContext.shadowBlur = 50;
-                        drawingContext.shadowColor = `rgba(${color.r}, ${color.g}, ${color.b}, 1.0)`;
-                    } else {
-                        noStroke();
-                        fill(255, 255, 255, 204);
-                    }
+                    drawingContext.transform(
+                        1 + rotateX, 0,
+                        rotateY, 1,
+                        0, 0
+                    );
                 }
 
-                push();
                 textSize(24 * anim.scale);
                 text(this.letters[i], 0, 0);
-                pop();
-
                 pop();
             });
         }
@@ -1545,30 +1386,79 @@ class Scene1 {
         CustomCursor.draw();
     }
 
-    // Add method to handle sound start
-    startBackgroundMusic() {
-        // Remove hobbit sound trigger from here
-        return;
-    }
-
     // Add this helper method
     getRandomStartPosition(axis) {
-        if (axis === 'x') {
-            return random() < 0.5 ? random(-width, 0) : random(width, width * 2);
+        return random() < 0.5 ?
+            random(-this[axis], 0) :
+            random(this[axis], this[axis] * 2);
+    }
+
+    // Add cleanup method to Scene1 class
+    cleanup() {
+        try {
+            // Stop sounds
+            [this.rainSound, this.hobbitSound, this.buttonSound,
+            this.jokerSound, this.fearSound, this.empireSound].forEach(sound => {
+                if (sound && sound.isPlaying && sound.isPlaying()) {
+                    try {
+                        sound.stop();
+                    } catch (e) {
+                        console.error('Error stopping sound:', e);
+                    }
+                }
+            });
+
+            // Add cursor cleanup
+            // document.body.style.cursor = 'default';  // Remove this line
+        } catch (e) {
+            console.error('Error in cleanup:', e);
         }
-        return random() < 0.5 ? random(-height, 0) : random(height, height * 2);
+    }
+
+    drawLetterAnimations() {
+        if (this.state === 4 && Array.isArray(this.letterAnimations)) {
+            this.letterAnimations.forEach((anim, i) => {
+                if (!anim || !anim.active) return;
+
+                try {
+                    let spacing = 160;
+                    let totalWidth = this.letters.length * spacing;
+                    let startX = width / 2 - totalWidth / 2 + (i * spacing);
+                    let targetY = height * 0.5 + 100;
+
+                    anim.x = startX;
+                    anim.y = targetY;
+                    anim.scale = 8;
+
+                    push();
+                    translate(anim.x, anim.y);
+
+                    if (anim.hover) {
+                        let time = frameCount * 0.0001; // Much slower
+                        let slowerTime = frameCount * 0.00005; // Much slower
+                        let rotateX = sin(time) * 0.05; // Smaller rotation
+                        let rotateY = cos(slowerTime) * 0.05;
+
+                        drawingContext.transform(
+                            1 + rotateX, 0,
+                            rotateY, 1,
+                            0, 0
+                        );
+                    }
+
+                    textSize(24 * anim.scale);
+                    text(this.letters[i], 0, 0);
+                    pop();
+                } catch (e) {
+                    console.error('Error in letter animation:', e);
+                }
+            });
+        }
     }
 }
 
-// This should be outside the class
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('button').forEach(button => {
-        button.addEventListener('click', () => {
-            console.log('Button clicked'); // Log to verify click event
-            const audio = new Audio('sounds/button.mp3');
-            audio.play().catch(error => console.error('Audio playback failed:', error));
-        });
-    });
-});
+// Make sure Scene1 is available globally
+window.Scene1 = Scene1;
+
 
 
