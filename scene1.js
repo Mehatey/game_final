@@ -304,23 +304,6 @@ class Scene1 {
         document.addEventListener('mouseover', (e) => {
             e.target.style.cursor = 'none';
         });
-
-        // Add Scene7 debug button with proper initialization
-        this.debugButtonScene7 = createButton('Scene7');
-        this.debugButtonScene7.position(20, height - 150);
-        this.debugButtonScene7.style('background-color', '#FF0000');
-        this.debugButtonScene7.style('color', 'white');
-        this.debugButtonScene7.style('border', 'none');
-        this.debugButtonScene7.style('padding', '10px 20px');
-        this.debugButtonScene7.style('cursor', 'none');
-        this.debugButtonScene7.style('font-family', 'ARCADE');
-        this.debugButtonScene7.mousePressed(async () => {
-            this.cleanup();
-            const scene7 = new Scene7();
-            await scene7.preload();  // Wait for preload to complete
-            switchScene(scene7);     // Switch after preload
-            this.debugButtonScene7.remove();
-        });
     }
 
     preload() {
@@ -1156,21 +1139,6 @@ class Scene1 {
                 console.error('Error in state 4 button handler:', e);
             }
         }
-
-        // Check for debug button click
-        if (this.debugButtonScene7 &&
-            mouseX > this.debugButtonScene7.x &&
-            mouseX < this.debugButtonScene7.x + this.debugButtonScene7.width &&
-            mouseY > this.debugButtonScene7.y &&
-            mouseY < this.debugButtonScene7.y + this.debugButtonScene7.height) {
-
-            console.log("Debug: Transitioning to Scene7");
-            this.cleanup();
-
-            // Switch to Scene7
-            switchScene(new Scene7());
-            return;
-        }
     }
 
     drawSoundPrompt() {
@@ -1442,9 +1410,6 @@ class Scene1 {
                     }
                 }
             });
-
-            // Remove only Scene7 debug button
-            if (this.debugButtonScene7) this.debugButtonScene7.remove();
 
         } catch (e) {
             console.error('Error in cleanup:', e);
