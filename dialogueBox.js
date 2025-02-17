@@ -8,7 +8,7 @@ class DialogueBox {
         this.targetText = "";
         this.charIndex = 0;
         this.isTyping = false;
-        this.typewriterSpeed = 2;
+        this.typewriterSpeed = 3;     // Was 2 originally, 4 currently
         this.displayDuration = 400;
         this.timer = 0;
         this.opacity = 255;
@@ -40,11 +40,11 @@ class DialogueBox {
         this.minWidth = 400;
         this.maxWidth = width - 10;
         this.namePadding = 25;
-        this.typingSpeed = 50;  // Increased from 30 for slower typing
-        this.fastTypingSpeed = 2; // Reduced from 4 to 2 for fast typing
+        this.typingSpeed = 60;        // Was 50 originally, 150 currently
+        this.fastTypingSpeed = 3;     // Was 4 currently
         this.fadeOutTimer = 0;
         this.fadeOutDuration = 60;  // Frames to fade out
-        this.typeInterval = 50;  // Increase this value to slow down typing (was likely 30 or less)
+        this.typeInterval = 40;       // Was 30 originally, 120 currently
 
         // Initialize typing sound
         this.typingSound = new Howl({
@@ -115,9 +115,7 @@ class DialogueBox {
             }
         }
         if (this.isTyping && frameCount % this.typewriterSpeed === 0) {
-            this.charIndex += 1;
-
-            // Update currentText from targetText based on charIndex
+            this.charIndex += 1;  // Remove the frameCount % 3 check
             this.currentText = this.targetText.substring(0, this.charIndex);
 
             if (this.charIndex >= this.targetText.length) {

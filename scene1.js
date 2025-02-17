@@ -305,55 +305,21 @@ class Scene1 {
             e.target.style.cursor = 'none';
         });
 
-        // Keep Scene4 debug button (previously labeled as Scene3)
-        this.debugButtonScene3 = createButton('Scene4.5');
-        this.debugButtonScene3.position(20, height - 200);
-        this.debugButtonScene3.style('background-color', '#FF0000');
-        this.debugButtonScene3.style('color', 'white');
-        this.debugButtonScene3.style('border', 'none');
-        this.debugButtonScene3.style('padding', '10px 20px');
-        this.debugButtonScene3.style('cursor', 'none');
-        this.debugButtonScene3.style('font-family', 'ARCADE');
-
-        this.debugButtonScene3.mousePressed(() => {
-            console.log("Debug: Switching to Scene4.5");
+        // Add Scene7 debug button with proper initialization
+        this.debugButtonScene7 = createButton('Scene7');
+        this.debugButtonScene7.position(20, height - 150);
+        this.debugButtonScene7.style('background-color', '#FF0000');
+        this.debugButtonScene7.style('color', 'white');
+        this.debugButtonScene7.style('border', 'none');
+        this.debugButtonScene7.style('padding', '10px 20px');
+        this.debugButtonScene7.style('cursor', 'none');
+        this.debugButtonScene7.style('font-family', 'ARCADE');
+        this.debugButtonScene7.mousePressed(async () => {
             this.cleanup();
-            this.debugButtonScene3.remove();
-            currentScene = new Scene4_5();
-            if (currentScene.preload) {
-                currentScene.preload();
-            }
-        });
-
-        // Update debug button properties in constructor
-        this.debugButton = {
-            x: 10,
-            y: 10,
-            width: 100,
-            height: 30,
-            visible: true,
-            text: "Scene 5"
-        };
-
-        // Add Scene5 debug button
-        this.debugButtonScene5 = createButton('Scene5');
-        this.debugButtonScene5.position(20, height - 150);  // Position it below Scene4.5 button
-        this.debugButtonScene5.style('background-color', '#FF0000');
-        this.debugButtonScene5.style('color', 'white');
-        this.debugButtonScene5.style('border', 'none');
-        this.debugButtonScene5.style('padding', '10px 20px');
-        this.debugButtonScene5.style('cursor', 'none');
-        this.debugButtonScene5.style('font-family', 'ARCADE');
-
-        this.debugButtonScene5.mousePressed(() => {
-            console.log("Debug: Switching to Scene5");
-            this.cleanup();
-            this.debugButtonScene5.remove();
-            this.debugButtonScene3.remove();
-            let scene5 = new Scene5();
-            scene5.preload().then(() => {
-                currentScene = scene5;
-            });
+            const scene7 = new Scene7();
+            await scene7.preload();  // Wait for preload to complete
+            switchScene(scene7);     // Switch after preload
+            this.debugButtonScene7.remove();
         });
     }
 
@@ -806,27 +772,6 @@ class Scene1 {
                 this.drawSoundPrompt();
             }
         }
-
-        // Draw debug button if visible
-        if (this.debugButton.visible) {
-            push();
-            // Button background
-            fill(this.debugButton.color);
-            stroke(255);
-            strokeWeight(2);
-            rect(this.debugButton.x, this.debugButton.y,
-                this.debugButton.width, this.debugButton.height, 5);
-
-            // Button text
-            noStroke();
-            fill(255);
-            textAlign(CENTER, CENTER);
-            textSize(16);
-            text(this.debugButton.text,
-                this.debugButton.x + this.debugButton.width / 2,
-                this.debugButton.y + this.debugButton.height / 2);
-            pop();
-        }
     }
 
 
@@ -1213,20 +1158,17 @@ class Scene1 {
         }
 
         // Check for debug button click
-        if (this.debugButton.visible &&
-            mouseX > this.debugButton.x &&
-            mouseX < this.debugButton.x + this.debugButton.width &&
-            mouseY > this.debugButton.y &&
-            mouseY < this.debugButton.y + this.debugButton.height) {
+        if (this.debugButtonScene7 &&
+            mouseX > this.debugButtonScene7.x &&
+            mouseX < this.debugButtonScene7.x + this.debugButtonScene7.width &&
+            mouseY > this.debugButtonScene7.y &&
+            mouseY < this.debugButtonScene7.y + this.debugButtonScene7.height) {
 
-            console.log("Debug: Transitioning to Scene5");
+            console.log("Debug: Transitioning to Scene7");
             this.cleanup();
 
-            // Create and transition to Scene5
-            let scene5 = new Scene5();
-            scene5.preload().then(() => {
-                currentScene = scene5;
-            });
+            // Switch to Scene7
+            switchScene(new Scene7());
             return;
         }
     }
@@ -1501,11 +1443,8 @@ class Scene1 {
                 }
             });
 
-            // Remove Scene4 debug button (previously Scene3)
-            if (this.debugButtonScene3) this.debugButtonScene3.remove();
-
-            // Remove Scene5 debug button
-            if (this.debugButtonScene5) this.debugButtonScene5.remove();
+            // Remove only Scene7 debug button
+            if (this.debugButtonScene7) this.debugButtonScene7.remove();
 
         } catch (e) {
             console.error('Error in cleanup:', e);

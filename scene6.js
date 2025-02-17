@@ -6,11 +6,18 @@ class Scene6 {
         this.instructionsRead = false;
         this.font = null;
 
-        // Hero with correct image path
+        // Initialize hero images first
+        this.heroImages = {
+            default: null,
+            left: null
+        };
+
+        // Initialize hero with default values
         this.hero = {
             x: 100,
             y: height / 2,
-            image: null
+            image: null,
+            direction: 'default'
         };
 
         // Game state
@@ -30,13 +37,12 @@ class Scene6 {
         this.background = null;
         this.doubt = null;
         this.missile2 = null;
-        this.missile6 = null;
 
         // Game state
         this.gameOver = false;
 
         // Cannon properties
-        this.moveSpeed = 5;
+        this.moveSpeed = 8;  // Increased from 5 to 8
         this.cannonActive = false;
         this.cannonPosition = createVector(0, 0);
         this.cannonDirection = createVector(1, 0);
@@ -58,17 +64,23 @@ class Scene6 {
 
         // Increase sizes
         this.heroSize = 150;  // Triple size (was 50)
-        this.missileSize = 80;  // Triple size (was 40)
+        this.missileSize = 50;  // Single size for all missiles
 
         // Add flash overlay properties
         this.flashAlpha = 0;
         this.flashDuration = 30; // frames
 
         // Add missile count limit
-        this.maxMissiles = 3;  // Start with fewer missiles
+        this.maxMissiles = 2;  // Reduced from 3 to 2
         this.missileSpawnRate = 0.005; // Lower initial spawn rate
         this.missileSpawnIncrease = 0.00002; // Slower increment rate over time
         this.missileStartTime = 57; // Start spawning missiles at 57 seconds
+
+        // Reduce missile speed range
+        this.missileSpeedRange = {
+            min: -3,
+            max: 3
+        };
 
         // Initialize missiles
         this.missiles = [];
@@ -76,9 +88,9 @@ class Scene6 {
             this.missiles.push({
                 x: random(width),
                 y: random(height),
-                speedX: random(-2, 2),  // Slower initial speed
-                speedY: random(-2, 2),  // Slower initial speed
-                type: random(1) < 0.5 ? 'missile2' : 'missile6',
+                speedX: random(this.missileSpeedRange.min, this.missileSpeedRange.max),
+                speedY: random(this.missileSpeedRange.min, this.missileSpeedRange.max),
+                type: 'missile2',
                 size: this.missileSize
             });
         }
@@ -92,26 +104,18 @@ class Scene6 {
             {
                 x: random(width),
                 y: random(height),
-                speedX: random(2, 4) * (random() > 0.5 ? 1 : -1),
-                speedY: random(2, 4) * (random() > 0.5 ? 1 : -1),
+                speedX: random(1.5, 2.5) * (random() > 0.5 ? 1 : -1),
+                speedY: random(1.5, 2.5) * (random() > 0.5 ? 1 : -1),
                 type: 'doubt',
                 size: 100
             },
             {
                 x: random(width),
                 y: random(height),
-                speedX: random(2, 4) * (random() > 0.5 ? 1 : -1),
-                speedY: random(2, 4) * (random() > 0.5 ? 1 : -1),
+                speedX: random(1.5, 2.5) * (random() > 0.5 ? 1 : -1),
+                speedY: random(1.5, 2.5) * (random() > 0.5 ? 1 : -1),
                 type: 'missile2',
-                size: 120
-            },
-            {
-                x: random(width),
-                y: random(height),
-                speedX: random(2, 4) * (random() > 0.5 ? 1 : -1),
-                speedY: random(2, 4) * (random() > 0.5 ? 1 : -1),
-                type: 'missile6',
-                size: 120
+                size: this.missileSize
             }
         ];
 
@@ -237,15 +241,23 @@ class Scene6 {
                 alpha: random(100, 255)
             });
         }
+
+        // Add diagonal movement boost
+        this.diagonalSpeedMultiplier = 0.71;  // For smooth diagonal movement
     }
 
     preload() {
-        // Load images
+        // Load hero images first
+        this.heroImages.default = loadImage('assets/characters/meh0/hero1still.png');
+        this.heroImages.left = loadImage('assets/characters/meh0/hero1left.png');
+
+        // Set initial hero image
+        this.hero.image = this.heroImages.default;
+
+        // Load other images
         this.background = loadImage('assets/backgrounds/bg8.png');
         this.doubt = loadImage('assets/characters/enemies/doubt.gif');
         this.missile2 = loadImage('assets/animations/missiles/missile2.gif');
-        this.missile6 = loadImage('assets/animations/missiles/missile6.gif');
-        this.hero.image = loadImage('assets/characters/meh0/hero1still.png');
 
         // Load sounds with proper callback chain
         soundFormats('mp3');
@@ -330,7 +342,7 @@ class Scene6 {
         this.drawDoubtHealthBar();
 
         // Allow hero movement
-        this.updateHeroPosition();
+        this.updateHero();
         this.drawHero();
 
         // Draw timer
@@ -500,27 +512,59 @@ class Scene6 {
         pop();
     }
 
-    updateHeroPosition() {
+    updateHero() {
+        // Store previous position for collision detection
+        let prevX = this.hero.x;
+        let prevY = this.hero.y;
+
+        let movingHorizontal = false;
+        let movingVertical = false;
+
+        // Horizontal movement with image switching - add null checks
         if (keyIsDown(LEFT_ARROW)) {
-            this.hero.x = max(0, this.hero.x - this.moveSpeed);
+            this.hero.x -= this.moveSpeed;
+            movingHorizontal = true;
+            if (this.heroImages.default) {
+                this.hero.image = this.heroImages.default;
+            }
         }
         if (keyIsDown(RIGHT_ARROW)) {
-            this.hero.x = min(width, this.hero.x + this.moveSpeed);
+            this.hero.x += this.moveSpeed;
+            movingHorizontal = true;
+            if (this.heroImages.left) {
+                this.hero.image = this.heroImages.left;
+            }
         }
+
+        // Vertical movement
         if (keyIsDown(UP_ARROW)) {
-            this.hero.y = max(0, this.hero.y - this.moveSpeed);
+            this.hero.y -= this.moveSpeed;
+            movingVertical = true;
         }
         if (keyIsDown(DOWN_ARROW)) {
-            this.hero.y = min(height, this.hero.y + this.moveSpeed);
+            this.hero.y += this.moveSpeed;
+            movingVertical = true;
         }
+
+        // Apply diagonal movement correction
+        if (movingHorizontal && movingVertical) {
+            this.hero.x = prevX + (this.hero.x - prevX) * this.diagonalSpeedMultiplier;
+            this.hero.y = prevY + (this.hero.y - prevY) * this.diagonalSpeedMultiplier;
+        }
+
+        // Keep hero in bounds
+        this.hero.x = constrain(this.hero.x, 0, width);
+        this.hero.y = constrain(this.hero.y, 0, height);
     }
 
     drawHero() {
-        // Draw hero character
-        push();
-        imageMode(CENTER);
-        image(this.hero.image, this.hero.x, this.hero.y, this.heroSize, this.heroSize);
-        pop();
+        // Check if image is loaded before drawing
+        if (this.hero.image) {
+            push();
+            imageMode(CENTER);
+            image(this.hero.image, this.hero.x, this.hero.y, this.heroSize, this.heroSize);
+            pop();
+        }
     }
 
     drawHope() {
@@ -605,19 +649,15 @@ class Scene6 {
     }
 
     createMissile() {
-        for (let i = 0; i < 2; i++) { // Double the initial count
-            let edge = floor(random(4));
-            let missile = {
-                x: this.doubtPosition.x, // Start from Doubt's position
-                y: this.doubtPosition.y,
-                speedX: random(-5, 5),
-                speedY: random(-5, 5),
-                type: random(1) < 0.5 ? 'missile2' : 'missile6',
-                size: this.missileSize
-            };
-
-            this.missiles.push(missile);
-        }
+        let missile = {
+            x: this.doubtPosition.x,
+            y: this.doubtPosition.y,
+            speedX: random(this.missileSpeedRange.min, this.missileSpeedRange.max), // Reduced speed range
+            speedY: random(this.missileSpeedRange.min, this.missileSpeedRange.max), // Reduced speed range
+            type: 'missile2',
+            size: this.missileSize
+        };
+        this.missiles.push(missile);
     }
 
     createFireballs() {
@@ -686,9 +726,10 @@ class Scene6 {
             translate(missile.x, missile.y);
             rotate(angle);
 
-            // Draw the missile body
-            let missileImg = missile.type === 'missile2' ? this.missile2 : this.missile6;
-            image(missileImg, -missile.size / 2, -missile.size / 2, missile.size, missile.size);
+            // Draw the missile body only if image is loaded
+            if (this.missile2) {  // Add check for image loading
+                image(this.missile2, -missile.size / 2, -missile.size / 2, missile.size, missile.size);
+            }
 
             pop();
         }
@@ -1137,14 +1178,14 @@ class Scene6 {
             this.redOrbs = [];
             this.bursts = [];
 
-            // Initialize initial set of missiles
+            // Initialize with slower, smaller missiles
             for (let i = 0; i < this.maxMissiles; i++) {
                 this.missiles.push({
                     x: random(width),
                     y: random(height),
-                    speedX: random(-5, 5),
-                    speedY: random(-5, 5),
-                    type: random(1) < 0.5 ? 'missile2' : 'missile6',
+                    speedX: random(this.missileSpeedRange.min, this.missileSpeedRange.max),
+                    speedY: random(this.missileSpeedRange.min, this.missileSpeedRange.max),
+                    type: 'missile2',
                     size: this.missileSize
                 });
             }
@@ -1261,9 +1302,6 @@ class Scene6 {
                     break;
                 case 'missile2':
                     img = this.missile2;
-                    break;
-                case 'missile6':
-                    img = this.missile6;
                     break;
             }
 

@@ -195,7 +195,7 @@ class Scene5 {
         // this.background = loadImage('./assets/backgrounds/dystopia.gif'); // Remove this line
 
         // Add circular movement properties
-        this.circleRadius = 200;  // Reduced from 250
+        this.circleRadius = 200;  // Keep this the same for Hope-Hero distance
         this.circleSpeed = 0.01;  // Initial rotation speed
         this.speedIncreaseInterval = 3000;  // 3 seconds
         this.maxCircleSpeed = 0.05;  // Maximum rotation speed
@@ -204,64 +204,31 @@ class Scene5 {
         this.enemyAngles = {};
         this.enemySequence.forEach((enemy, index) => {
             this.enemyAngles[enemy] = (TWO_PI / this.enemyCount) * index;
+            // Use the larger radius here too
+            this[`${enemy}X`] = width / 2 + cos(this.enemyAngles[enemy]) * this.enemyCircleRadius;
+            this[`${enemy}Y`] = height / 2 + sin(this.enemyAngles[enemy]) * this.enemyCircleRadius;
         });
 
-        // Float animation properties
-        this.floatAngle = 0;
-        this.floatSpeed = 0.015;  // Increased for more noticeable movement
-        this.floatAmount = 30;    // Total movement range in pixels
-        this.floatDirection = 1;  // Track direction
+        // Add float animation properties
+        this.floatOffset = 0;
+        this.floatSpeed = 0.02;  // Speed of up/down movement
+        this.floatAmount = 20;   // Pixels to move up/down
 
         // Update sizes and distances
         this.heroSize = 180;     // Increased hero size
+        this.enemySize = 320;  // Increased from 220 to 280
 
-        // Entry effects configuration
+        // Initialize entry effects for each enemy
         this.entryEffects = {
-            fear: {
-                active: false,
-                timer: 0,
-                duration: 5000,
-                overlay: color(128, 0, 128, 0),
-                startPos: { x: 0, y: 0 }
-            },
-            doubt: {
-                active: false,
-                timer: 0,
-                duration: 5000,
-                overlay: color(180, 0, 0, 0),
-                startPos: { x: 0, y: 0 }
-            },
-            regret: {
-                active: false,
-                timer: 0,
-                duration: 5000,
-                overlay: color(0, 0, 139, 0),
-                startPos: { x: 0, y: 0 }
-            },
-            anger: {
-                active: false,
-                timer: 0,
-                duration: 5000,
-                overlay: color(0, 100, 0, 0),
-                startPos: { x: 0, y: 0 }
-            },
-            procast: {
-                active: false,
-                timer: 0,
-                duration: 5000,
-                overlay: color(255, 140, 0, 0),
-                startPos: { x: 0, y: 0 }
-            },
-            insecurity: {
-                active: false,
-                timer: 0,
-                duration: 5000,
-                overlay: color(139, 0, 0, 0),
-                startPos: { x: 0, y: 0 }
-            }
+            fear: { progress: 0, startPos: null },
+            doubt: { progress: 0, startPos: null },
+            regret: { progress: 0, startPos: null },
+            anger: { progress: 0, startPos: null },
+            procast: { progress: 0, startPos: null },
+            insecurity: { progress: 0, startPos: null }
         };
 
-        // Entry positions (outside canvas)
+        // When triggering an enemy, set its startPos
         this.entryPositions = [
             { x: -100, y: -100 },        // Top-left
             { x: width + 100, y: -100 }, // Top-right
@@ -283,6 +250,33 @@ class Scene5 {
 
         this.timeouts = [];
         this.intervals = [];
+
+        // Add dynamic overlay properties
+        this.backgroundOverlay = {
+            color: 0,
+            baseOpacity: 100,      // Base darkness
+            currentOpacity: 100,
+            pulseSpeed: 0.008,     // Keep same speed
+            pulseAmount: 60,       // Amount it pulses between light/dark black
+            time: 0,
+            isWhite: false
+        };
+
+        // Add vignette properties
+        this.vignette = {
+            size: 1.5,    // Size of the vignette (larger = smaller vignette)
+            opacity: 200  // Opacity of vignette
+        };
+
+        // Initialize dialogue box
+        this.dialogueBox = new DialogueBox();
+
+        // Add dialogue tracking
+        this.currentDialogueIndex = 0;
+        this.dialogueStarted = false;
+
+        // Increase enemy orbit radius significantly
+        this.enemyCircleRadius = 200;  // Increased to 500 for much larger orbit
     }
 
     async preload() {
@@ -323,90 +317,76 @@ class Scene5 {
     draw() {
         if (!this.assetsLoaded) return;
 
-        // 1. Draw background
-        clear();
-        if (this.background) {
-            push();
-            imageMode(CORNER);
-            image(this.background, 0, 0, width, height);
-            pop();
-        }
+        // 1. Draw background with proper scaling
+        push();
+        imageMode(CORNER);
+        image(this.background, 0, 0, windowWidth, windowHeight);
 
-        // 2. Draw enemy effects
-        if (this.currentEnemy) {
-            this.enemySequence.forEach(enemy => {
-                if (this[`${enemy}Active`]) {
-                    if (this.entryEffects[enemy].active) {
-                        this.drawEnemyEntry(enemy);
-                    } else {
-                        this.drawEnemy(enemy);
-                    }
+        // Add dark overlay specifically for background
+        fill(0, 150 + sin(frameCount * 0.02) * 50); // Oscillates between alpha 100-200
+        noStroke();
+        rect(0, 0, width, height);
+        pop();
+
+        // 2. Draw vignette
+        push();
+        drawingContext.save();
+        let gradient = drawingContext.createRadialGradient(
+            width / 2, height / 2, 0,
+            width / 2, height / 2, width / this.vignette.size
+        );
+        gradient.addColorStop(0, 'rgba(0,0,0,0)');
+        gradient.addColorStop(1, `rgba(0,0,0,${this.vignette.opacity / 255})`);
+        drawingContext.fillStyle = gradient;
+        rect(0, 0, width, height);
+        drawingContext.restore();
+        pop();
+
+        // 3. Draw overlay
+        push();
+        blendMode(BLEND);
+        this.backgroundOverlay.time += this.backgroundOverlay.pulseSpeed;
+        let pulseValue = sin(this.backgroundOverlay.time);
+
+        // Only use black with varying opacity
+        fill(0, this.backgroundOverlay.baseOpacity + (abs(pulseValue) * this.backgroundOverlay.pulseAmount));
+        noStroke();
+        rect(0, 0, width, height);
+        pop();
+
+        // 4. Draw game elements
+        if (this.hero) this.hero.draw();
+        if (this.hopeVisible && this.hope) this.hope.draw();
+
+        // 5. Draw enemies with BLEND mode
+        push();
+        blendMode(BLEND);  // Changed from default to BLEND
+        for (let enemy of this.enemySequence) {
+            if (this[`${enemy}Active`]) {
+                if (this.entryEffects[enemy] && this.entryEffects[enemy].progress < 1) {
+                    this.drawEnemyEntry(enemy);
                 }
-            });
-        }
-
-        // 3. Draw hero and hope
-        if (this.hero) {
-            push();
-            imageMode(CENTER);
-            this.hero.update();
-            // Enable movement
-            if (keyIsDown(LEFT_ARROW)) this.hero.x -= 5;
-            if (keyIsDown(RIGHT_ARROW)) this.hero.x += 5;
-
-            // Smooth floating motion
-            this.floatAngle += this.floatSpeed;
-            let floatOffset = sin(this.floatAngle) * this.floatAmount;
-
-            this.hero.y = height / 2 + floatOffset;
-            this.hero.draw();
-            pop();
-
-            // Draw hope with same float
-            if (this.hope) {
-                push();
-                imageMode(CENTER);
-                this.hope.x = this.hero.x + 75;
-                this.hope.y = this.hero.y;  // Will inherit hero's float
-                this.hope.draw();
-                pop();
+                this.drawEnemy(enemy);
+                this.drawEnemyEffects(enemy, this[`${enemy}X`], this[`${enemy}Y`]);
             }
         }
+        pop();
 
-        // 4. Draw dialogue box
-        this.dialogueBox.update();
-        this.dialogueBox.draw();
-
-        // Remove dialogue handling from here and consolidate in one place
-        if (!this.dialogueBox.isTyping && this.dialogueBox.isComplete()) {
-            if (this.currentDialogue < this.dialogues.length) {
-                let dialogue = this.dialogues[this.currentDialogue];
-                this.dialogueBox.startDialogue(dialogue.text, dialogue.speaker);
-                this.currentDialogue++;
-
-                if (this.currentDialogue === this.dialogues.length) {
-                    setTimeout(() => {
-                        this.startEnemyEntry('fear');
-                    }, 3000);
-                }
-            }
+        // Start dialogue sequence if not started
+        if (!this.dialogueStarted) {
+            this.startNextDialogue();
+            this.dialogueStarted = true;
         }
 
-        // Increase rotation speed every 3 seconds
-        if (this.currentEnemy && millis() - this.lastSpeedIncrease > this.speedIncreaseInterval) {
-            this.circleSpeed = min(this.circleSpeed * 1.2, this.maxCircleSpeed);  // Increase by 20% each time
-            this.lastSpeedIncrease = millis();
-            console.log("Speed increased to:", this.circleSpeed);
+        // Check if current dialogue is complete and start next one
+        if (this.dialogueBox.isComplete() && this.currentDialogueIndex < this.dialogues.length) {
+            this.startNextDialogue();
         }
 
-        // Check if all enemies are active to start final sequence
-        if (this.checkAllEnemiesActive() && !this.finalSequenceStarted) {
-            this.startFinalSequence();
-        }
-
-        // Handle hope strobing if active
-        if (this.hopeStrobing) {
-            this.strobeHope();
+        // Draw dialogue box
+        if (this.dialogueBox) {
+            this.dialogueBox.update();
+            this.dialogueBox.draw();
         }
     }
 
@@ -468,8 +448,13 @@ class Scene5 {
     triggerEnemyEntry(enemyType) {
         this[`${enemyType}Active`] = true;
         this.currentEnemy = enemyType;
+
+        // Set random start position for entry effect
+        const randomPos = random(this.entryPositions);
+        this.entryEffects[enemyType].startPos = randomPos;
+        this.entryEffects[enemyType].progress = 0;  // Reset progress
+
         this.soundManager.playSound('scary');
-        // Play thunder sound if available
         if (this.soundManager.sounds.thunder) {
             this.soundManager.playSound('thunder');
         }
@@ -616,163 +601,91 @@ class Scene5 {
             return;
         }
 
-        let effect = this.entryEffects[enemy];
-        if (!effect.startPos) {
-            console.error(`Missing start position for enemy: ${enemy}`);
-            return;
+        let progress = this.entryEffects[enemy].progress;
+        let startPos = this.entryEffects[enemy].startPos;
+
+        switch (enemy) {
+            case 'fear':
+                this.drawFearEntry(startPos, progress, enemy);
+                break;
+            case 'doubt':
+                this.drawDoubtEntry(startPos, progress, enemy);
+                break;
+            case 'regret':
+                this.drawRegretEntry(startPos, progress, enemy);
+                break;
+            case 'anger':
+                this.drawAngerEntry(startPos, progress, enemy);
+                break;
+            case 'procast':
+                this.drawProcastEntry(startPos, progress, enemy);
+                break;
+            case 'insecurity':
+                this.drawInsecurityEntry(startPos, progress, enemy);
+                break;
         }
 
-        let progress = (millis() - effect.timer) / effect.duration;
-        progress = constrain(progress, 0, 1);
-
-        try {
-            switch (enemy) {
-                case 'fear':
-                    this.drawFearEntry(effect.startPos, progress, enemy);
-                    break;
-                case 'doubt':
-                    this.drawDoubtEntry(effect.startPos, progress, enemy);
-                    break;
-                case 'regret':
-                    this.drawRegretEntry(effect.startPos, progress, enemy);
-                    break;
-                case 'anger':
-                    this.drawAngerEntry(effect.startPos, progress, enemy);
-                    break;
-                case 'procast':
-                    this.drawProcastEntry(effect.startPos, progress, enemy);
-                    break;
-                case 'insecurity':
-                    this.drawInsecurityEntry(effect.startPos, progress, enemy);
-                    break;
-                default:
-                    console.error(`Unknown enemy type: ${enemy}`);
-            }
-        } catch (error) {
-            console.error(`Error drawing entry for ${enemy}:`, error);
-        }
-
-        if (progress >= 1) {
-            effect.active = false;
-        }
-
-        if (progress < 0.6) {
-            push();
-            blendMode(SCREEN);  // Changed to SCREEN for more intense flashing
-            noStroke();
-
-            // Faster, more intense strobes
-            let strobeCount = 8;  // Increased from 5
-            let strobeProgress = (progress * strobeCount) % 1;
-            let flashAlpha = map(strobeProgress, 0, 1, 255, 0);
-            let flashIntensity = (1 + sin(progress * 300)) * 0.9;  // Faster strobe
-            flashIntensity *= (1 + cos(progress * 250)) * 0.9;  // Add second wave
-
-            // Use exact dialogue box colors
-            const flashColors = {
-                fear: color(128, 0, 128, flashAlpha),      // Purple
-                doubt: color(180, 0, 0, flashAlpha),       // Dark red
-                regret: color(0, 0, 139, flashAlpha),      // Dark blue
-                anger: color(0, 100, 0, flashAlpha),       // Dark green
-                procast: color(255, 140, 0, flashAlpha),   // Orange
-                insecurity: color(139, 0, 0, flashAlpha)   // Dark crimson
-            };
-
-            // Draw flash behind everything
-            drawingContext.globalCompositeOperation = 'destination-over';
-            fill(flashColors[enemy]);
-            rect(0, 0, width, height);
-            pop();
-        }
+        // Make animations much slower (5 seconds longer)
+        this.entryEffects[enemy].progress += 0.002;  // Changed from 0.005 to 0.002
     }
 
     drawFearEntry(startPos, progress, enemy) {
-        if (!startPos) return;
-
+        // Enhanced purple mist effect
         push();
-        // Full screen effects
         blendMode(ADD);
-
-        // Dark atmosphere over entire screen
-        push();
-        blendMode(MULTIPLY);
-        noStroke();
-        fill(40, 0, 60, 150);
-        rect(0, 0, width, height);
-        pop();
-
-        // Lightning strikes across screen
-        if (frameCount % 5 === 0) {
-            for (let i = 0; i < 5; i++) {
-                push();
-                blendMode(ADD);
-                stroke(200, 150, 255);
-                strokeWeight(3);
-                let x1 = random(width);
-                let y1 = 0;
-                let x2 = random(width);
-                let y2 = height;
-                drawingContext.shadowBlur = 30;
-                drawingContext.shadowColor = color(200, 150, 255);
-                this.drawLightning(x1, y1, x2, y2);
-                pop();
-            }
-        }
-
-        // Swirling purple mist covering the screen
-        for (let i = 0; i < 50; i++) {
-            let angle = noise(i, frameCount * 0.02) * TWO_PI;
-            let radius = width * 0.5 * noise(i, frameCount * 0.01);
+        for (let i = 0; i < 40; i++) {  // Increased from 20 to 40 particles
+            let angle = random(TWO_PI);
+            let radius = (1 - progress) * 400;  // Increased radius
             let x = width / 2 + cos(angle) * radius;
             let y = height / 2 + sin(angle) * radius;
 
-            push();
-            blendMode(SCREEN);
-            noStroke();
+            // Add pulsing effect
+            let pulseSize = sin(frameCount * 0.1 + i) * 20;
+            let size = (random(30, 70) + pulseSize) * progress;  // Increased size
+
+            // Layered circles for more depth
             fill(128, 0, 128, 30);
-            let size = noise(i, frameCount * 0.05) * 100;
-            circle(x, y, size);
-            pop();
+            ellipse(x, y, size * 1.5, size * 1.5);
+            fill(128, 0, 128, 50);
+            ellipse(x, y, size, size);
+            fill(180, 0, 180, 70);
+            ellipse(x, y, size * 0.5, size * 0.5);
         }
-
-        // Energy particles converging on entry point
-        for (let i = 0; i < 30; i++) {
-            let t = frameCount * 0.1 + i;
-            let spiralRadius = (1 - progress) * 400;
-            let x = lerp(startPos.x, this.hero.x, progress) + cos(t) * spiralRadius;
-            let y = lerp(startPos.y, this.hero.y, progress) + sin(t) * spiralRadius;
-
-            push();
-            blendMode(ADD);
-            noStroke();
-            fill(200, 100, 255, 150);
-            let particleSize = 10 + sin(t) * 5;
-            circle(x, y, particleSize);
-
-            // Add trailing effect
-            for (let j = 0; j < 5; j++) {
-                let trailX = x - cos(t) * (j * 10);
-                let trailY = y - sin(t) * (j * 10);
-                fill(200, 100, 255, 30 - j * 5);
-                circle(trailX, trailY, particleSize - j);
-            }
-            pop();
-        }
-
-        // Pulsing vignette effect
-        let vignetteSize = 100 + sin(frameCount * 0.1) * 20;
-        drawingContext.shadowBlur = vignetteSize;
-        drawingContext.shadowColor = color(128, 0, 128, 100);
-        noFill();
-        stroke(128, 0, 128, 50);
-        rect(0, 0, width, height);
-
         pop();
     }
 
     drawDoubtEntry(startPos, progress, enemy) {
-        // Copy the fire effects from Anger's entry
-        // ... fire and ember effects ...
+        // Enhanced red shadow tendrils
+        push();
+        blendMode(ADD);
+        for (let i = 0; i < 20; i++) {  // Increased from 15 to 20 tendrils
+            let angle = i * TWO_PI / 20;
+            let radius = (1 - progress) * 500;  // Increased radius
+
+            // Add multiple layers of tendrils
+            for (let layer = 0; layer < 3; layer++) {
+                stroke(180, 0, 0, 150 - layer * 30);
+                strokeWeight(4 - layer);
+                noFill();
+                beginShape();
+                for (let j = 0; j < 8; j++) {  // More complex curves
+                    let r = radius * (1 - j / 8);
+                    let wobble = sin(frameCount * 0.1 + i + j) * 50;  // Added wobble
+                    let x = width / 2 + cos(angle + sin(frameCount * 0.1)) * r + wobble;
+                    let y = height / 2 + sin(angle + cos(frameCount * 0.1)) * r + wobble;
+                    curveVertex(x, y);
+                }
+                endShape();
+            }
+
+            // Add particle effects at tendril tips
+            fill(255, 0, 0, 100);
+            noStroke();
+            let tipX = width / 2 + cos(angle) * radius;
+            let tipY = height / 2 + sin(angle) * radius;
+            circle(tipX, tipY, 20 * progress);
+        }
+        pop();
     }
 
     drawRegretEntry(startPos, progress, enemy) {
@@ -853,35 +766,42 @@ class Scene5 {
     }
 
     drawAngerEntry(startPos, progress, enemy) {
-        // New green energy effect
         push();
         blendMode(ADD);
 
-        // Green energy waves
-        for (let i = 0; i < 30; i++) {
-            let angle = i * TWO_PI / 30;
-            let r = 300 * (1 - progress);
+        // Enhanced green energy waves
+        for (let i = 0; i < 40; i++) {  // Increased from 30 to 40 waves
+            let angle = i * TWO_PI / 40;
+            let r = 400 * (1 - progress);  // Increased radius
             let x = width / 2 + cos(angle) * r;
             let y = height / 2 + sin(angle) * r;
 
-            stroke(0, 255, 0, 150);
-            strokeWeight(3);
-            let energyLength = 50 + sin(frameCount * 0.1 + i) * 20;
-            let x2 = x + cos(angle) * energyLength;
-            let y2 = y + sin(angle) * energyLength;
-            line(x, y, x2, y2);
+            // Multiple energy beams
+            for (let j = 0; j < 3; j++) {
+                stroke(0, 255, 0, 150 - j * 30);
+                strokeWeight(4 - j);
+                let energyLength = 80 + sin(frameCount * 0.1 + i) * 30;  // Longer beams
+                let wobble = cos(frameCount * 0.2 + i) * 20;  // Added wobble
+                let x2 = x + cos(angle) * (energyLength + wobble);
+                let y2 = y + sin(angle) * (energyLength + wobble);
+                line(x, y, x2, y2);
+            }
         }
 
-        // Energy particles
-        for (let i = 0; i < 50; i++) {
+        // Enhanced energy particles
+        for (let i = 0; i < 80; i++) {  // Increased from 50 to 80 particles
             let t = frameCount * 0.05 + i;
-            let r = 200 * (1 - progress);
+            let r = 400 * (1 - progress);
             let x = width / 2 + cos(t) * r;
             let y = height / 2 + sin(t) * r;
 
-            fill(0, 255, 0, 150);
+            // Layered particles
+            fill(0, 255, 0, 100);
             noStroke();
-            circle(x, y, 5 + sin(t) * 3);
+            let size = 8 + sin(t) * 4;  // Larger particles
+            circle(x, y, size);
+            fill(100, 255, 100, 70);
+            circle(x, y, size * 1.5);
         }
         pop();
     }
@@ -896,8 +816,8 @@ class Scene5 {
             blendMode(SCREEN);
             noStroke();
             let flashAlpha = map(progress, 0, 0.6, 255, 0);
-            let flashIntensity = (1 + sin(progress * 100)) * 0.5;
-            flashIntensity *= (1 + cos(progress * 80)) * 0.5;
+            let flashIntensity = (1 + sin(progress * 100)) * 0.8;
+            flashIntensity *= (1 + cos(progress * 80)) * 0.8;
 
             // Full screen flash in procrastination's orange color
             fill(255, 140, 0, flashAlpha * flashIntensity);
@@ -908,7 +828,7 @@ class Scene5 {
                 let x = random(width);
                 let y = random(height);
                 let size = random(20, 100);
-                fill(255, 140, 0, flashAlpha * 0.5);
+                fill(255, 140, 0, flashAlpha * 0.8);
                 circle(x, y, size * flashIntensity);
             }
             pop();
@@ -937,8 +857,8 @@ class Scene5 {
             pop();
 
             // Time particles
-            let particleX = x + cos(frameCount * 0.1) * 20;
-            let particleY = y + sin(frameCount * 0.1) * 20;
+            let particleX = x + cos(frameCount * 0.1) * 50;
+            let particleY = y + sin(frameCount * 0.1) * 50;
             fill(255, 140, 0, 100);
             noStroke();
             circle(particleX, particleY, 5);
@@ -1229,6 +1149,57 @@ class Scene5 {
         } catch (error) {
             console.error('Error in strobeHope:', error);
         }
+    }
+
+    startNextDialogue() {
+        if (this.currentDialogueIndex < this.dialogues.length) {
+            const dialogue = this.dialogues[this.currentDialogueIndex];
+            this.dialogueBox.startDialogue(dialogue.text, dialogue.speaker);
+            this.currentDialogueIndex++;
+
+            // Check if this was the last dialogue
+            if (this.currentDialogueIndex === this.dialogues.length) {
+                // Wait 1 second after "Stay close" dialogue before starting fear entry
+                setTimeout(() => {
+                    this.fearActive = true;
+                    this.fearCurrentDialogue = 0;
+                    this.startEnemyDialogue('fear');
+                    if (this.soundManager && !this.fearSoundPlayed) {
+                        this.soundManager.playSound('fear');
+                        this.fearSoundPlayed = true;
+                    }
+                }, 1000);
+            }
+        }
+    }
+
+    startEnemySequence() {
+        // Start with the first enemy
+        this.triggerEnemyEntry(this.enemySequence[0]);
+
+        // Start scary sound if available
+        if (this.soundManager) {
+            this.soundManager.playSound('scary');
+        }
+    }
+
+    updatePositions() {
+        // Calculate float offset
+        this.floatOffset = sin(frameCount * this.floatSpeed) * this.floatAmount;
+
+        // Update Hope position with float
+        this.hope.x = this.hero.x + cos(this.circleAngle) * this.circleRadius;
+        this.hope.y = this.hero.y + sin(this.circleAngle) * this.circleRadius + this.floatOffset;
+
+        // Update Hero position with same float
+        this.hero.y = height / 2 + this.floatOffset;
+
+        // Update enemy positions with larger radius
+        this.enemySequence.forEach((enemy, index) => {
+            this.enemyAngles[enemy] = (TWO_PI / this.enemyCount) * index;
+            this[`${enemy}X`] = width / 2 + cos(this.enemyAngles[enemy]) * this.enemyCircleRadius;
+            this[`${enemy}Y`] = height / 2 + sin(this.enemyAngles[enemy]) * this.enemyCircleRadius;
+        });
     }
 }
 
