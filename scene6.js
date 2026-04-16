@@ -68,7 +68,13 @@ class Scene6 {
 
         // Add flash overlay properties
         this.flashAlpha = 0;
-        this.flashDuration = 30; // frames
+        this.flashDuration = 30;
+
+        // Screen shake
+        this._shakeFrames    = 0;
+        this._shakeMag       = 0;
+        this._cannonBursts   = [];   // particles on cannon fire
+        this._chargeWarning  = 0;
 
         // Add missile count limit
         this.maxMissiles = 2;  // Reduced from 3 to 2
@@ -332,21 +338,29 @@ class Scene6 {
             this.victory = false; // Defeat if motivation is 0 or hero is hit
         }
 
+        // Screen shake
+        if (this._shakeFrames > 0) {
+            translate(random(-this._shakeMag, this._shakeMag),
+                      random(-this._shakeMag, this._shakeMag));
+            this._shakeFrames--;
+        }
+
         // Draw background
         background(this.background);
 
-        // Add custom cursor
+        // Mode: danger during battle
+        CustomCursor.mode = 'danger';
         CustomCursor.draw();
 
-        // Draw doubt health bar
-        this.drawDoubtHealthBar();
+        // Unified top HUD bar
+        this.drawHUD();
 
         // Allow hero movement
         this.updateHero();
         this.drawHero();
 
         // Draw timer
-        this.drawTimer();
+        // drawTimer handled by unified HUD above
 
         // Generate red orbs
         if (millis() - this.lastOrbTime > this.orbInterval) {
@@ -363,7 +377,21 @@ class Scene6 {
         this.updateProjectiles();
 
         // Draw motivation bar
-        this.drawMotivationBar();
+        // drawMotivationBar handled by unified HUD above
+
+        // Cannon burst particles
+        if (this._cannonBursts.length > 0) {
+            push(); noStroke();
+            for (let i = this._cannonBursts.length - 1; i >= 0; i--) {
+                let b = this._cannonBursts[i];
+                b.x += b.vx; b.y += b.vy; b.vy += 0.18;
+                b.life--;
+                if (b.life <= 0) { this._cannonBursts.splice(i, 1); continue; }
+                fill(b.r, b.g, b.b, map(b.life, 22, 0, 220, 0));
+                ellipse(b.x, b.y, b.sz * (b.life/22));
+            }
+            pop();
+        }
 
         // Draw cannon if active
         if (this.cannonActive) {
@@ -385,11 +413,23 @@ class Scene6 {
             this.createShieldEffect();
         }
 
-        // Draw red flash overlay on doubt when hit
-        if (this.doubtHitEffect && millis() - this.doubtHitTime < 200) {
+        // Red hit flash overlay (full screen)
+        if (this.flashAlpha > 0) {
             push();
-            tint(255, 0, 0, 200);
-            image(this.doubt, this.doubtPosition.x, this.doubtPosition.y, 150, 150);
+            noStroke();
+            fill(255, 0, 0, this.flashAlpha);
+            rect(0, 0, width, height);
+            this.flashAlpha = max(0, this.flashAlpha - 12);
+            pop();
+        }
+
+        // Doubt charge warning — yellow pulse before charge
+        if (this.isCharging) {
+            push();
+            noStroke();
+            let warn = (sin(frameCount * 0.5) * 0.5 + 0.5) * 60;
+            fill(255, 220, 0, warn);
+            rect(0, 0, width, height);
             pop();
         }
 
@@ -479,36 +519,127 @@ class Scene6 {
 
     drawTimer() {
         push();
-        fill(255);
+        let t    = this.gameTimer;
+        let isLow = t <= 10;
+        let pulse = isLow ? (sin(frameCount * 0.28) * 0.5 + 0.5) : 0;
+        drawingContext.shadowBlur  = isLow ? 18 + pulse * 18 : 8;
+        drawingContext.shadowColor = isLow ? 'rgba(255,80,80,0.9)' : 'rgba(255,255,255,0.3)';
+        noStroke();
+        fill(0, 0, 0, 160);
+        rectMode(CENTER);
+        rect(width / 2, 36, 90, 46, 12);
+        fill(isLow ? color(255, 80 + pulse * 80, 80) : 255);
         textSize(32);
-        textAlign(CENTER, TOP);
-        text(this.gameTimer + 's', width / 2, 20);
+        textAlign(CENTER, CENTER);
+        text(t + 's', width / 2, 36);
+        drawingContext.shadowBlur = 0;
+        pop();
+    }
+
+    drawHUD() {
+        push();
+        // Single unified frosted bar across top
+        noStroke();
+        fill(0, 0, 0, 170);
+        rectMode(CORNER);
+        rect(0, 0, width, 64);
+
+        // LEFT — Motivation bar
+        let mw  = min(260, width * 0.22);
+        let mfill = map(this.motivation, 0, 100, 0, mw);
+        let mLow  = this.motivation < 30;
+        let mPulse = mLow ? (sin(frameCount * 0.25) * 0.5 + 0.5) : 0;
+        let ctx = drawingContext;
+
+        // bg
+        fill(0, 0, 0, 120); rect(20, 14, mw, 22, 6);
+        // fill gradient
+        let mg = ctx.createLinearGradient(20, 14, 20 + mw, 14);
+        mg.addColorStop(0, mLow ? `rgba(255,${80+mPulse*80},60,0.85)` : 'rgba(255,140,60,0.85)');
+        mg.addColorStop(1, mLow ? 'rgba(200,40,40,0.85)' : 'rgba(220,100,40,0.85)');
+        ctx.fillStyle = mg; ctx.fillRect(20, 14, mfill, 22);
+        if (mLow) { drawingContext.shadowBlur = 10; drawingContext.shadowColor = 'rgba(255,80,80,0.7)'; }
+        fill(240, 200, 160); textSize(12); textAlign(LEFT, CENTER);
+        text('MOTIVATION  ' + floor(this.motivation) + '%', 26, 36);
+        drawingContext.shadowBlur = 0;
+
+        // CENTER — Timer (dominant)
+        let t = ceil(this.gameTimer);
+        let tLow = t <= 10;
+        let tPulse = tLow ? (sin(frameCount * 0.28) * 0.5 + 0.5) : 0;
+        fill(0, 0, 0, 160); rectMode(CENTER); rect(width/2, 32, 100, 52, 10);
+        if (tLow) { drawingContext.shadowBlur = 20 + tPulse*16; drawingContext.shadowColor = 'rgba(255,80,80,0.9)'; }
+        else      { drawingContext.shadowBlur = 8; drawingContext.shadowColor = 'rgba(100,180,255,0.4)'; }
+        fill(tLow ? color(255, 80+tPulse*80, 80) : color(100, 200, 255));
+        textSize(36); textAlign(CENTER, CENTER);
+        text(t + 's', width/2, 32);
+        drawingContext.shadowBlur = 0;
+
+        // RIGHT — Doubt health
+        let dw    = min(260, width * 0.22);
+        let dx0   = width - 20 - dw;
+        let dfill = map(this.doubtHealth, 0, 100, 0, dw);
+        let dLow  = this.doubtHealth < 20;
+        fill(0, 0, 0, 120); rectMode(CORNER); rect(dx0, 14, dw, 22, 6);
+        let dg = ctx.createLinearGradient(dx0, 14, dx0 + dw, 14);
+        dg.addColorStop(0, 'rgba(255,60,60,0.85)');
+        dg.addColorStop(1, 'rgba(200,30,30,0.85)');
+        ctx.fillStyle = dg; ctx.fillRect(dx0, 14, dfill, 22);
+        if (dLow) { drawingContext.shadowBlur = 12; drawingContext.shadowColor = 'rgba(255,60,60,0.7)'; }
+        fill(255, 160, 160); textSize(12); textAlign(RIGHT, CENTER);
+        text('DOUBT  ' + floor(this.doubtHealth) + '%', width - 26, 36);
+        drawingContext.shadowBlur = 0;
         pop();
     }
 
     drawDoubtHealthBar() {
+        // kept for compatibility — unified HUD handles this now
+    }
+
+    drawMotivationBar_legacy() {
         push();
-        fill(0, 150);
-        rect(width - 220, 20, 200, 20);
-        fill(255, 0, 0);
-        rect(width - 220, 20, this.doubtHealth * 2, 20);
+        rectMode(CORNER);
+        let barW = map(this.doubtHealth, 0, 100, 0, 220);
+        noStroke();
+        fill(0, 0, 0, 160);
+        rect(width - 248, 16, 232, 34, 8);
+        drawingContext.shadowBlur  = 8;
+        drawingContext.shadowColor = 'rgba(255,40,40,0.7)';
+        fill(200, 30, 30);
+        rect(width - 244, 20, barW, 26, 6);
+        drawingContext.shadowBlur = 0;
         fill(255);
-        textSize(16);
-        textAlign(RIGHT);
-        text('Doubt Health: ' + this.doubtHealth, width - 25, 35);
+        textSize(13);
+        textAlign(RIGHT, CENTER);
+        text('DOUBT  ' + floor(this.doubtHealth) + '%', width - 26, 34);
         pop();
     }
 
     drawMotivationBar() {
         push();
-        fill(0, 150);
-        rect(20, 20, 200, 20);
-        fill(0, 255, 0);
-        rect(20, 20, this.motivation * 2, 20);
+        rectMode(CORNER);
+        let isLow = this.motivation < 30;
+        let barW   = map(this.motivation, 0, 100, 0, 220);
+        let pulse  = isLow ? (sin(frameCount * 0.25) * 0.5 + 0.5) : 0;
 
-        fill(this.motivation < 30 ? 255 : 0);
-        textSize(16);
-        text('Motivation: ' + this.motivation, 25, 35);
+        // Background
+        noStroke();
+        fill(0, 0, 0, 160);
+        rect(16, 16, 228, 34, 8);
+
+        // Bar fill
+        drawingContext.shadowBlur  = isLow ? 14 + pulse * 14 : 6;
+        drawingContext.shadowColor = isLow ? 'rgba(255,60,60,0.9)' : 'rgba(60,255,60,0.5)';
+        fill(isLow ? color(255, 60 + pulse * 80, 60) : color(60, 220, 80));
+        rect(20, 20, barW, 26, 6);
+        drawingContext.shadowBlur = 0;
+
+        // Label
+        noStroke();
+        fill(255);
+        textSize(13);
+        textAlign(LEFT, CENTER);
+        text('MOTIVATION  ' + floor(this.motivation) + '%', 26, 34);
         pop();
     }
 
@@ -853,6 +984,8 @@ class Scene6 {
 
                 this.motivation = max(0, this.motivation - 20);
                 this.missiles.splice(this.missiles.indexOf(missile), 1);
+                this._shakeFrames = 14; this._shakeMag = 8;
+                this.flashAlpha = 180;
                 if (this.motivation <= 0) {
                     this.gameOver = true;
                 }
@@ -879,6 +1012,8 @@ class Scene6 {
 
                 this.motivation = 0;
                 this.gameOver = true;
+                this._shakeFrames = 20; this._shakeMag = 12;
+                this.flashAlpha = 220;
             }
         }
 
@@ -986,13 +1121,25 @@ class Scene6 {
 
     activateCannon() {
         if (!this.cannonActive) {
-            if (this.sounds.firing) {
-                this.sounds.firing.play();  // Play firing sound when cannon activates
-            }
-            this.cannonName = localStorage.getItem('cannonName') || "HOPE";
-            this.cannonPosition = createVector(this.hero.x, this.hero.y);
+            if (this.sounds.firing) this.sounds.firing.play();
+            this.cannonName      = localStorage.getItem('cannonName') || "HOPE";
+            this.cannonPosition  = createVector(this.hero.x, this.hero.y);
             this.cannonDirection = createVector(1, 0);
-            this.cannonActive = true;
+            this.cannonActive    = true;
+
+            // Screen shake + burst particles on fire
+            this._shakeFrames = 10;
+            this._shakeMag    = 6;
+            for (let i = 0; i < 14; i++) {
+                let a = (i / 14) * TWO_PI;
+                this._cannonBursts.push({
+                    x: this.hero.x, y: this.hero.y,
+                    vx: cos(a) * random(3, 7),
+                    vy: sin(a) * random(3, 7),
+                    life: 22, sz: random(5, 12),
+                    r: 255, g: floor(random(180, 240)), b: 60
+                });
+            }
         }
     }
 
@@ -1016,16 +1163,40 @@ class Scene6 {
             rectMode(CENTER);
             rect(width / 2, height / 2, 400, 250, this.dialogueBox.cornerRadius);
 
-            fill(255);
-            textAlign(CENTER, CENTER);
-            textSize(32);
-            text('You beat Doubt!', width / 2, height / 2 - 60);
+            // Victory particles
+            if (!this._vicStart) this._vicStart = millis();
+            let vt = min(1, (millis() - this._vicStart) / 1500);
+            push();
+            noStroke();
+            for (let i = 0; i < 50; i++) {
+                let seed = i * 17.3;
+                let angle = (i / 50) * TWO_PI + frameCount * 0.01;
+                let d = 80 + noise(seed) * 200 + vt * 60;
+                let px = width/2 + cos(angle) * d;
+                let py = height/2 + sin(angle) * d * 0.6;
+                let sz = 4 + noise(seed, frameCount * 0.02) * 10;
+                fill(floor(random(100,255)), floor(random(150,255)), 80, 180);
+                ellipse(px, py, sz, sz);
+            }
+            pop();
 
-            // New Collect Learning button
-            let buttonWidth = 200;
+            drawingContext.shadowBlur  = 28;
+            drawingContext.shadowColor = 'rgba(100,200,100,0.9)';
+            fill(120, 255, 120);
+            textAlign(CENTER, CENTER);
+            textSize(44);
+            text('YOU BEAT DOUBT!', width / 2, height / 2 - 70);
+            drawingContext.shadowBlur = 0;
+
+            fill(220, 220, 255);
+            textSize(20);
+            text('Your motivation was stronger.', width / 2, height / 2 - 24);
+
+            // Collect Learning button
+            let buttonWidth = 240;
             let buttonHeight = 60;
             let buttonX = width / 2;
-            let buttonY = height / 2 + 40;
+            let buttonY = height / 2 + 50;
 
             if (mouseX > buttonX - buttonWidth / 2 && mouseX < buttonX + buttonWidth / 2 &&
                 mouseY > buttonY - buttonHeight / 2 && mouseY < buttonY + buttonHeight / 2) {
@@ -1041,29 +1212,54 @@ class Scene6 {
             textAlign(CENTER, CENTER);
             text('Collect Learning', buttonX, buttonY);
 
-            if (mouseIsPressed &&
+            if (mouseIsPressed && !this.transitioning &&
                 mouseX > buttonX - buttonWidth / 2 && mouseX < buttonX + buttonWidth / 2 &&
                 mouseY > buttonY - buttonHeight / 2 && mouseY < buttonY + buttonHeight / 2) {
+                this.transitioning = true;
                 if (this.sounds.hopeEntry && this.sounds.hopeEntry.isPlaying()) {
-                    this.sounds.hopeEntry.stop(); // Stop hopeentry.mp3
+                    this.sounds.hopeEntry.stop();
                 }
                 switchScene(new Scene7());
             }
         } else {
             // Defeat screen
-            background(0, 150);
-            fill(100, 100, 255, 200);
-            rectMode(CENTER);
-            rect(width / 2, height / 2, 200, 100, 20);
+            push();
+            fill(0, 0, 0, 180);
+            rect(0, 0, width, height);
 
-            fill(255);
+            drawingContext.shadowBlur  = 24;
+            drawingContext.shadowColor = 'rgba(255,60,60,0.8)';
+            fill(255, 80, 80);
             textAlign(CENTER, CENTER);
-            textSize(24);
-            text('Try Again', width / 2, height / 2);
+            textSize(48);
+            text('DOUBT WINS', width / 2, height / 2 - 50);
+            drawingContext.shadowBlur = 0;
 
-            // Restart game on click
-            if (mouseIsPressed) {
+            fill(200, 200, 255);
+            textSize(20);
+            text('Your motivation ran out.', width / 2, height / 2 + 2);
+
+            // Try Again button
+            let bx = width/2, by = height/2 + 60, bw = 200, bh = 54;
+            let hover = mouseX > bx-bw/2 && mouseX < bx+bw/2 && mouseY > by-bh/2 && mouseY < by+bh/2;
+            drawingContext.shadowBlur  = hover ? 20 : 6;
+            drawingContext.shadowColor = 'rgba(100,100,255,0.8)';
+            fill(hover ? color(120, 120, 255) : color(60, 60, 200));
+            rectMode(CENTER);
+            rect(bx, by, bw, bh, 12);
+            drawingContext.shadowBlur = 0;
+            fill(255);
+            textSize(22);
+            text('TRY AGAIN', bx, by);
+            pop();
+
+            // Restart on click — only inside the button (bx/by/bw/bh already declared above)
+            let onBtn = mouseX > bx-bw/2 && mouseX < bx+bw/2 && mouseY > by-bh/2 && mouseY < by+bh/2;
+            if (mouseIsPressed && onBtn && !this.resettingGame) {
+                this.resettingGame = true;
                 this.resetGame();
+            } else if (!mouseIsPressed) {
+                this.resettingGame = false;
             }
         }
     }
@@ -1237,31 +1433,20 @@ class Scene6 {
         let buttonY = height * 0.75;
 
         push();
-        if (this.isMouseOverButton(buttonX, buttonY, buttonWidth, buttonHeight)) {
-            // Play button sound on hover
-            if (!this.buttonHovered && this.sounds.button) {
-                this.sounds.button.play();
-            }
-            this.buttonHovered = true;
-
-            // Inner shadow effect
-            drawingContext.shadowBlur = 15;
-            drawingContext.shadowColor = 'rgba(0, 0, 0, 0.8)';
-            drawingContext.shadowOffsetX = 3;
-            drawingContext.shadowOffsetY = 3;
-            drawingContext.shadowInset = true;
-            fill(100, 100, 255);
-
-            rect(buttonX, buttonY, buttonWidth, buttonHeight, 10);
-            fill(0, 0, 0, 50);
-            rect(buttonX + 3, buttonY + 3, buttonWidth - 6, buttonHeight - 6, 8);
-        } else {
-            this.buttonHovered = false;
-            fill(50);
-            rect(buttonX, buttonY, buttonWidth, buttonHeight, 10);
+        let hovered = this.isMouseOverButton(buttonX, buttonY, buttonWidth, buttonHeight);
+        if (hovered && !this.buttonHovered && this.sounds.button) {
+            this.sounds.button.play();
         }
+        this.buttonHovered = hovered;
 
-        // Button text
+        drawingContext.shadowBlur  = hovered ? 28 : 8;
+        drawingContext.shadowColor = hovered ? 'rgba(80,140,255,0.9)' : 'rgba(60,60,200,0.4)';
+        fill(hovered ? color(80, 130, 255) : color(40, 40, 160));
+        stroke(hovered ? color(140, 180, 255) : color(60, 60, 180));
+        strokeWeight(2);
+        rect(buttonX, buttonY, buttonWidth, buttonHeight, 12);
+        drawingContext.shadowBlur = 0;
+
         fill(255);
         noStroke();
         textSize(24);
@@ -1373,39 +1558,81 @@ class Scene6 {
 
     // Add this method to reset the game
     resetGame() {
-        // Reset game variables
-        this.gameOver = false;
-        this.victory = false;
-        this.doubtDefeated = false;
-        this.doubtHealth = 100;
-        this.motivation = 100;
-        this.gameTimer = 60;
-        this.dialogueIndex = 0;
-        this.showDialogue = false;
-        this.particles = [];
-        this.missiles = [];
-        this.redOrbs = [];
+        // Clear running intervals from special power
+        if (this.cannonInterval) {
+            clearInterval(this.cannonInterval);
+            this.cannonInterval = null;
+        }
+
+        // Core game state
+        this.gameOver          = false;
+        this.victory           = false;
+        this.doubtDefeated     = false;
+        this.doubtDialogueShown = false;
+        this.doubtHealth       = 100;
+        this.motivation        = 100;
+        this.gameTimer         = 60;
+        this.lastTime          = millis();
+        this.dialogueIndex     = 0;
+        this.showDialogue      = false;
+        this.isCastleMusicPlaying = false;
+
+        // Clear all arrays
+        this.particles   = [];
+        this.missiles    = [];
+        this.redOrbs     = [];
+        this.bursts      = [];
+        this.cannonBalls = [];
+
+        // Cannon
+        this.cannonActive    = false;
         this.specialPowerActive = false;
-        this.invincible = false;
-        this.cannonActive = false;
-        this.lastTime = millis();
+        this.specialPowerTime   = 0;
+        this.invincible         = false;
 
-        // Reset hero position
-        this.hero.x = width / 2;
-        this.hero.y = height - 50;
+        // Doubt position / movement reset
+        this.doubtPosition = {
+            x: width - 150,
+            y: height / 2,
+            rotation: 0,
+            rotationSpeed: 0.02
+        };
+        this.doubtDirection          = 1;
+        this.doubtSpeed              = 3;
+        this.doubtHorizontalDirection = 1;
+        this.isCharging              = false;
+        this.chargeVelocity          = { x: 0, y: 0 };
+        this.lastChargeTime          = 0;
+        this.doubtHitEffect          = false;
+        this.doubtSoundPlayed        = false;
 
-        // Reset cannon properties
-        this.cannonPosition = createVector(this.hero.x, this.hero.y);
+        // Hero position
+        this.hero.x = 100;
+        this.hero.y = height / 2;
+        this.cannonPosition  = createVector(this.hero.x, this.hero.y);
         this.cannonDirection = createVector(1, 0);
 
-        // Play castle.mp3 from the beginning
+        // Visual state
+        this.flashAlpha    = 0;
+        this._shakeFrames  = 0;
+        this._shakeMag     = 0;
+        this._cannonBursts = [];
+        this._vicStart     = null;
+        this.transitioning = false;
+        this.resettingGame = false;
+        this.fadeOverlayAlpha = 0;
+        this.doubtOpacity     = 255;
+
+        // Allow setup() to actually run again
+        this.isInitialized = false;
+        this.setup();
+
+        // Restart music
         if (this.sounds.castle) {
             this.sounds.castle.stop();
             this.sounds.castle.play();
+            this.isCastleMusicPlaying = true;
         }
-
-        // Reset any other necessary game state
-        this.setup(); // Reinitialize game setup if needed
     }
 
     updateSpecialPowerBar() {
@@ -1652,16 +1879,18 @@ class Scene6 {
     }
 
     drawStreaksAndLightning(timeElapsed) {
+        if (frameCount % 2 !== 0) return; // draw every other frame — less frantic
         push();
-        stroke(255, 0, 0, 150); // Red sparks
-        strokeWeight(2);
-        for (let i = 0; i < 30; i++) { // Increase number of streaks
-            let angle = random(TWO_PI);
-            let length = random(20, 200);
-            let x1 = this.doubtPosition.x + cos(angle) * length;
-            let y1 = this.doubtPosition.y + sin(angle) * length;
-            let x2 = this.doubtPosition.x + cos(angle) * (length + random(20, 50));
-            let y2 = this.doubtPosition.y + sin(angle) * (length + random(20, 50));
+        let intensity = map(timeElapsed, 0, 6000, 1, 0.3);
+        stroke(255, 40, 40, 130 * intensity);
+        strokeWeight(1.5);
+        for (let i = 0; i < 12; i++) {
+            let angle  = random(TWO_PI);
+            let len    = random(30, 140);
+            let x1 = this.doubtPosition.x + cos(angle) * len;
+            let y1 = this.doubtPosition.y + sin(angle) * len;
+            let x2 = this.doubtPosition.x + cos(angle) * (len + random(15, 40));
+            let y2 = this.doubtPosition.y + sin(angle) * (len + random(15, 40));
             line(x1, y1, x2, y2);
         }
         pop();
@@ -1684,19 +1913,39 @@ class Scene6 {
     }
 
     showDefeatScreen() {
-        background(0, 150);
-        fill(100, 100, 255, 200);
-        rectMode(CENTER);
-        rect(width / 2, height / 2, 200, 100, 20);
+        push();
+        fill(0, 0, 0, 180); rect(0, 0, width, height);
 
-        fill(255);
+        drawingContext.shadowBlur  = 24;
+        drawingContext.shadowColor = 'rgba(255,60,60,0.8)';
+        fill(255, 80, 80);
         textAlign(CENTER, CENTER);
-        textSize(24);
-        text('Try Again', width / 2, height / 2);
+        textSize(48);
+        text('DOUBT WINS', width / 2, height / 2 - 50);
+        drawingContext.shadowBlur = 0;
 
-        // Restart game on click
-        if (mouseIsPressed) {
+        fill(200, 200, 255);
+        textSize(20);
+        text('Your motivation ran out.', width / 2, height / 2 + 2);
+
+        let bx = width/2, by = height/2+60, bw = 200, bh = 54;
+        let hover = mouseX > bx-bw/2 && mouseX < bx+bw/2 && mouseY > by-bh/2 && mouseY < by+bh/2;
+        drawingContext.shadowBlur  = hover ? 20 : 6;
+        drawingContext.shadowColor = 'rgba(100,100,255,0.8)';
+        fill(hover ? color(120,120,255) : color(60,60,200));
+        rectMode(CENTER);
+        rect(bx, by, bw, bh, 12);
+        drawingContext.shadowBlur = 0;
+        fill(255); textSize(22);
+        text('TRY AGAIN', bx, by);
+        pop();
+
+        let onBtn = mouseX > bx-bw/2 && mouseX < bx+bw/2 && mouseY > by-bh/2 && mouseY < by+bh/2;
+        if (mouseIsPressed && onBtn && !this.resettingGame) {
+            this.resettingGame = true;
             this.resetGame();
+        } else if (!mouseIsPressed) {
+            this.resettingGame = false;
         }
     }
 
@@ -1715,11 +1964,16 @@ class Scene6 {
         // Implement collision detection logic for fireblasts
         return false; // Placeholder
     }
-}
 
-document.querySelectorAll('button').forEach(button => {
-    button.addEventListener('click', () => {
-        const audio = new Audio('sounds/button.mp3');
-        audio.play();
-    });
-});
+    cleanup() {
+        if (this.cannonInterval) {
+            clearInterval(this.cannonInterval);
+            this.cannonInterval = null;
+        }
+        if (this.sounds) {
+            Object.values(this.sounds).forEach(s => {
+                if (s && typeof s.stop === 'function') s.stop();
+            });
+        }
+    }
+}

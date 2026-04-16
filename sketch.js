@@ -67,32 +67,22 @@ function windowResized() {
 
 function setScene(sceneName) {
     if (currentScene) {
-        clear();
-        background(0);
-        removeElements();
-        if (currentScene.cleanup) {
-            currentScene.cleanup();
-        }
+        if (currentScene.cleanup) currentScene.cleanup();
         currentScene = null;
     }
-
     clear();
     background(0);
     removeElements();
 
     switch (sceneName) {
-        case 'scene1':
-            currentScene = new Scene1();
-            break;
-        case 'scene4':
-            currentScene = new Scene4();
-            break;
-        case 'scene4.5':
-            currentScene = new Scene4_5();
-            break;
-        case 'scene5':
-            currentScene = new Scene5();
-            break;
-        // ... other scenes ...
+        case 'scene1':  currentScene = new Scene1();   break;
+        case 'scene2':  currentScene = new Scene2();   break;
+        case 'scene3':  currentScene = new Scene3();   break;
+        case 'scene4':  currentScene = new Scene4();   break;
+        case 'scene4.5': currentScene = new Scene4_5(); break;
+        case 'scene5':  currentScene = new Scene5();   break;
+        case 'scene6':  currentScene = new Scene6();   break;
+        case 'scene7':  currentScene = new Scene7();   break;
     }
+    if (currentScene && currentScene.preload) currentScene.preload();
 }

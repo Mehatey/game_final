@@ -46,7 +46,7 @@ class Scene1 {
                 width: (commonWidth / 3) * 1.2 + 30,
                 height: 80,
                 text: "BEGIN JOURNEY"
-            }
+            },
         };
 
 
@@ -91,6 +91,8 @@ class Scene1 {
         this.showButtons = false;
 
         this.playButtonClicked = false;
+        this.debugVisible = true;
+        this._createDebugOverlay();
 
         // Initialize sound system
         this.soundEffects = {
@@ -424,6 +426,9 @@ class Scene1 {
     }
 
     draw() {
+        // Debug panel — drawn first so it overlays every state
+        this.drawDebugButtons();
+
         if (this.showInitialButton) {
             background(0);
 
@@ -672,7 +677,7 @@ class Scene1 {
             }
         } else {
             background(0);
-            console.log('Drawing scene');
+
             if (!this.soundStarted && this.soundLoaded && this.sound && !this.sound.isPlaying()) {
                 this.sound.play();
                 this.soundStarted = true;
@@ -757,6 +762,58 @@ class Scene1 {
         }
     }
 
+    _createDebugOverlay() {
+        const scenes = [
+            { label: 'WALKTHROUGH',  scene: 'scene3'   },
+            { label: 'SURVEY',       scene: 'scene4'   },
+            { label: 'DISTRACTIONS', scene: 'scene4_5' },
+            { label: 'BOSSES',       scene: 'scene5'   },
+            { label: 'MAIN BATTLE',  scene: 'scene6'   },
+        ];
+
+        this._debugOverlay = document.createElement('div');
+        Object.assign(this._debugOverlay.style, {
+            position: 'fixed', top: '12px', left: '12px',
+            zIndex: '9999', display: 'flex', flexDirection: 'column', gap: '6px'
+        });
+
+        scenes.forEach(({ label, scene }) => {
+            const btn = document.createElement('button');
+            btn.textContent = '▶ ' + label;
+            Object.assign(btn.style, {
+                background: 'rgba(0,0,0,0.7)', color: '#fff',
+                border: '1px solid rgba(255,255,255,0.3)',
+                padding: '6px 14px', fontSize: '11px', fontFamily: 'monospace',
+                cursor: 'pointer', borderRadius: '4px', textAlign: 'left'
+            });
+            btn.onmouseover = () => { btn.style.background = 'rgba(255,220,0,0.9)'; btn.style.color = '#000'; };
+            btn.onmouseout  = () => { btn.style.background = 'rgba(0,0,0,0.7)';     btn.style.color = '#fff'; };
+            btn.addEventListener('click', () => {
+                this._removeDebugOverlay();
+                this.cleanup();
+                switch (scene) {
+                    case 'scene3':   currentScene = new Scene3();   break;
+                    case 'scene4':   currentScene = new Scene4();   break;
+                    case 'scene4_5': currentScene = new Scene4_5(); break;
+                    case 'scene5':   currentScene = new Scene5();   break;
+                    case 'scene6':   currentScene = new Scene6();   break;
+                }
+                if (currentScene.preload) currentScene.preload();
+            });
+            this._debugOverlay.appendChild(btn);
+        });
+
+        document.body.appendChild(this._debugOverlay);
+    }
+
+    _removeDebugOverlay() {
+        if (this._debugOverlay) {
+            this._debugOverlay.remove();
+            this._debugOverlay = null;
+        }
+    }
+
+    drawDebugButtons() {} // no-op — overlay is HTML now
 
     isMouseOverCircle(button) {
         let d = dist(mouseX, mouseY, button.x, button.y);
@@ -996,6 +1053,7 @@ class Scene1 {
             getAudioContext().resume();
         }
 
+
         if (this.showInitialButton) {
             let buttonWidth = 200;
             let buttonHeight = 60;
@@ -1030,6 +1088,7 @@ class Scene1 {
                 this.showInitialButton = false;
                 this.initialState = true;
                 this.state = 'initial_play';
+                this._removeDebugOverlay();
                 return;
             }
             return;
@@ -1135,6 +1194,7 @@ class Scene1 {
                     if (currentScene.preload) currentScene.preload();
                     return;
                 }
+
             } catch (e) {
                 console.error('Error in state 4 button handler:', e);
             }
@@ -1398,6 +1458,7 @@ class Scene1 {
 
     // Add cleanup method to Scene1 class
     cleanup() {
+        this._removeDebugOverlay();
         try {
             // Stop sounds
             [this.rainSound, this.hobbitSound, this.buttonSound,

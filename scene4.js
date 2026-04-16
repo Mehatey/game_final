@@ -105,6 +105,11 @@ class Scene4 {
 
         this.hasFirstCannonFired = false;
         this.sceneTransitionTimer = null;
+        this._shakeFrames  = 0;
+        this._shakeMag     = 0;
+        this._fadeAlpha    = 0;
+        this._fading       = false;
+        this._optionFlash  = 0;   // frames of white flash on option select
 
         this.doorWidth = 0;
         this.doorHeight = windowHeight;
@@ -149,6 +154,18 @@ class Scene4 {
     }
 
     draw() {
+        // Screen shake
+        if (this._shakeFrames > 0) {
+            translate(random(-this._shakeMag, this._shakeMag),
+                      random(-this._shakeMag, this._shakeMag));
+            this._shakeFrames--;
+        }
+
+        // Pre-transition fade-to-black
+        if (this._fading) {
+            this._fadeAlpha = min(255, this._fadeAlpha + 4);
+        }
+
         // Start with black background
         background(0);
 
@@ -246,6 +263,13 @@ class Scene4 {
                     line(startX, startY, endX, endY);
                 }
                 pop();
+
+                // Ambient portal rumble — grows as portal widens
+                if (frameCount % 4 === 0) {
+                    let rumble = map(elapsed, 0, this.doorDuration, 0, 2.5);
+                    this._shakeFrames = 2;
+                    this._shakeMag    = rumble;
+                }
 
                 // Calculate portal size
                 this.doorWidth = map(
@@ -387,14 +411,26 @@ class Scene4 {
             this.dialogueBox.draw();
         }
 
-        // Draw cursor in all states
-        CustomCursor.draw();  // Always draw cursor, not just during questions
-
-        // Draw dialogue box if active
-        if (this.dialogueBox) {
-            this.dialogueBox.update();
-            this.dialogueBox.draw();
+        // Option-selected flash
+        if (this._optionFlash > 0) {
+            push(); noStroke();
+            fill(255, 255, 255, map(this._optionFlash, 12, 0, 120, 0));
+            rect(0, 0, width, height);
+            this._optionFlash--;
+            pop();
         }
+
+        // Fade-to-black overlay
+        if (this._fadeAlpha > 0) {
+            push();
+            noStroke();
+            fill(0, this._fadeAlpha);
+            rect(0, 0, width, height);
+            pop();
+        }
+
+        // Draw cursor in all states
+        CustomCursor.draw();
     }
 
     keyPressed() {
@@ -404,6 +440,10 @@ class Scene4 {
     }
 
     cleanup() {
+        if (this.sceneTransitionTimer) {
+            clearTimeout(this.sceneTransitionTimer);
+            this.sceneTransitionTimer = null;
+        }
         // Stop all sounds
         if (this.gameMusic) {
             this.gameMusic.stop();
@@ -422,6 +462,12 @@ class Scene4 {
             this.firingSound.unload();
         }
 
+        // Remove input box if it exists
+        if (this.inputBox) {
+            this.inputBox.remove();
+            this.inputBox = null;
+        }
+
         // Remove ALL debug buttons
         const buttons = document.querySelectorAll('button');
         buttons.forEach(button => {
@@ -438,34 +484,65 @@ class Scene4 {
             return;
         }
 
-        let q = this.questions[this.currentQuestion];
-        let boxWidth = 900;
-        let boxHeight = 200 + q.options.length * 70;
-
-        // Draw main box
-        fill(0, 100, 255, 230);
-        stroke(0, 70, 180);
-        strokeWeight(4);
-        rectMode(CENTER);
-        rect(width / 2, height / 2, boxWidth, boxHeight, 20);
-
-        // Draw question text
-        fill(255);
+        // Progress indicator
+        push();
+        let prog = (this.currentQuestion) / this.questions.length;
+        let barW = 300;
         noStroke();
+        fill(0, 0, 0, 140);
+        rect(width/2 - barW/2 - 4, 28, barW + 8, 22, 6);
+        fill(0, 100, 255, 180);
+        rect(width/2 - barW/2, 32, barW * prog, 14, 4);
+        fill(255, 200);
+        textSize(13);
         textAlign(CENTER, CENTER);
-        textSize(32);
-        text(q.question, width / 2, height / 2 - boxHeight / 2 + 80);
+        text(`Question ${this.currentQuestion + 1} / ${this.questions.length}`, width/2, 39);
+        pop();
 
-        // Draw options with hover effect
+        let q        = this.questions[this.currentQuestion];
+        let boxWidth = min(860, width * 0.88);
+        let boxHeight = 180 + q.options.length * 64;
+        let boxX = width/2 - boxWidth/2;
+        let boxY = height/2 - boxHeight/2;
+
+        // Gradient question box
+        push();
+        let ctx = drawingContext;
+        let bgrad = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxHeight);
+        bgrad.addColorStop(0, 'rgba(35, 80, 150, 0.94)');
+        bgrad.addColorStop(1, 'rgba(20, 55, 115, 0.94)');
+        ctx.fillStyle = bgrad;
+        ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+        drawingContext.shadowBlur  = 24;
+        drawingContext.shadowColor = 'rgba(80, 150, 255, 0.45)';
+        noFill();
+        stroke(80, 140, 220);
+        strokeWeight(2);
+        rectMode(CORNER);
+        rect(boxX, boxY, boxWidth, boxHeight, 16);
+        drawingContext.shadowBlur = 0;
+
+        // Question text
+        fill(210, 235, 255);
+        noStroke();
+        textAlign(CENTER, TOP);
+        textSize(28);
+        text(q.question, boxX + 32, boxY + 38, boxWidth - 64);
+
+        // Divider line
+        stroke(80, 120, 200, 100);
+        strokeWeight(1);
+        line(boxX + 40, boxY + 118, boxX + boxWidth - 40, boxY + 118);
+
+        // Options
         for (let i = 0; i < q.options.length; i++) {
-            let y = height / 2 - boxHeight / 2 + 160 + i * 70;
+            let oy = boxY + 138 + i * 64;
+            let ow = boxWidth - 64;
+            let ox = boxX + 32;
 
-            // Check hover state
-            let isHovered = mouseX > width / 2 - boxWidth / 2 + 40 &&
-                mouseX < width / 2 + boxWidth / 2 - 40 &&
-                mouseY > y - 25 && mouseY < y + 25;
+            let isHovered = mouseX > ox && mouseX < ox + ow && mouseY > oy && mouseY < oy + 46;
 
-            // Play sound on hover
             if (isHovered && !this['option' + i + 'Hovered']) {
                 this.buttonSound.play();
                 this['option' + i + 'Hovered'] = true;
@@ -473,31 +550,66 @@ class Scene4 {
                 this['option' + i + 'Hovered'] = false;
             }
 
-            // Draw option button with hover effect
-            fill(isHovered ? 'yellow' : 'white');
-            stroke(0);
-            strokeWeight(2);
-            rect(width / 2, y, boxWidth - 80, 50, 8);
+            // Scale on hover (smooth)
+            let targetSc = isHovered ? 1.025 : 1.0;
+            let key      = '_optSc' + i;
+            this[key]    = lerp(this[key] || 1.0, targetSc, 0.18);
+            let sc       = this[key];
 
-            // Draw option text
-            fill(0);
+            let ctx2 = drawingContext;
+            if (isHovered) {
+                let og = ctx2.createLinearGradient(ox, oy, ox, oy + 46);
+                og.addColorStop(0, 'rgba(220, 230, 90, 0.92)');
+                og.addColorStop(1, 'rgba(190, 210, 60, 0.92)');
+                ctx2.fillStyle = og;
+                drawingContext.shadowBlur  = 14;
+                drawingContext.shadowColor = 'rgba(220, 240, 80, 0.5)';
+            } else {
+                let og = ctx2.createLinearGradient(ox, oy, ox, oy + 46);
+                og.addColorStop(0, 'rgba(100, 160, 240, 0.75)');
+                og.addColorStop(1, 'rgba(70,  130, 210, 0.75)');
+                ctx2.fillStyle = og;
+                drawingContext.shadowBlur  = 5;
+                drawingContext.shadowColor = 'rgba(80, 140, 220, 0.25)';
+            }
+
+            push();
+            translate(ox + ow/2, oy + 23);
+            scale(sc);
+            ctx2.fillRect(-ow/2, -23, ow, 46);
+            noFill();
+            stroke(isHovered ? color(240,250,100) : color(100,150,220));
+            strokeWeight(1.5);
+            rect(-ow/2, -23, ow, 46, 8);
+            drawingContext.shadowBlur = 0;
+
+            fill(isHovered ? 20 : 230);
             noStroke();
-            textSize(24);
-            text(q.options[i], width / 2, y);
+            textAlign(CENTER, CENTER);
+            textSize(21);
+            text(q.options[i], 0, 0);
+            pop();
         }
+        pop();
     }
 
     showFinalQuestion() {
         if (!this.inputBox) {
-            console.log("Creating input box");
             this.inputBox = createInput('');
-            this.inputBox.position(width / 2 - 150, height / 2 + 20);
-            this.inputBox.size(300, 40);
+            this.inputBox.position(width / 2 - 180, height / 2 + 10);
+            this.inputBox.size(360, 46);
             this.inputBox.style('font-size', '20px');
-            this.inputBox.style('padding', '10px');
+            this.inputBox.style('padding', '10px 16px');
             this.inputBox.style('border-radius', '8px');
-            this.inputBox.style('font-family', 'ARCADE');
-            this.inputBox.style('cursor', 'pointer');
+            this.inputBox.style('font-family', 'ARCADE, monospace');
+            this.inputBox.style('background', 'rgba(10,30,70,0.92)');
+            this.inputBox.style('border', '2px solid rgba(100,160,255,0.7)');
+            this.inputBox.style('color', 'rgb(180,220,255)');
+            this.inputBox.style('outline', 'none');
+            this.inputBox.style('box-shadow', '0 0 20px rgba(80,150,255,0.4)');
+            this.inputBox.style('cursor', 'text');
+            // Auto-focus so player can type immediately
+            setTimeout(() => { if (this.inputBox) this.inputBox.elt.focus(); }, 80);
 
             this.inputBox.mousePressed(() => {
                 console.log("Input box clicked");
@@ -528,11 +640,31 @@ class Scene4 {
         rectMode(CENTER);
         rect(width / 2, height / 2, 800, 200, 20);
 
-        fill(255);
+        // Better styled final question box
+        let fctx = drawingContext;
+        let fbx = width/2 - 360, fby = height/2 - 130, fbw = 720, fbh = 230;
+        let fbg = fctx.createLinearGradient(fbx, fby, fbx, fby + fbh);
+        fbg.addColorStop(0, 'rgba(35,80,150,0.94)');
+        fbg.addColorStop(1, 'rgba(20,55,115,0.94)');
+        fctx.fillStyle = fbg;
+        fctx.fillRect(fbx, fby, fbw, fbh);
+        drawingContext.shadowBlur  = 22;
+        drawingContext.shadowColor = 'rgba(80,150,255,0.4)';
+        noFill(); stroke(80,140,220); strokeWeight(2);
+        rect(fbx, fby, fbw, fbh, 16);
+        drawingContext.shadowBlur = 0;
+
+        fill(210, 235, 255);
         noStroke();
         textAlign(CENTER, CENTER);
-        textSize(28);
-        text("Enter the name of a person who has helped you\nthe most in your life", width / 2, height / 2 - 50);
+        textSize(24);
+        text("Who has helped you the most in your life?", width / 2, height/2 - 68);
+
+        // Pulse hint text
+        let hp = (sin(frameCount * 0.08) + 1) * 0.5;
+        fill(140, 180, 255, 120 + hp * 80);
+        textSize(14);
+        text("Type their name and press Enter", width / 2, height/2 + 68);
     }
 
     mousePressed() {
@@ -542,12 +674,19 @@ class Scene4 {
             let boxHeight = 200 + q.options.length * 70;
 
             // Check clicks for each option
+            let boxWidth2 = min(860, width * 0.88);
+            let boxHeight2 = 180 + q.options.length * 64;
+            let boxX2 = width/2 - boxWidth2/2;
+            let boxY2 = height/2 - boxHeight2/2;
             for (let i = 0; i < q.options.length; i++) {
-                let y = height / 2 - boxHeight / 2 + 160 + i * 70;
-                if (mouseX > width / 2 - boxWidth / 2 + 40 &&
-                    mouseX < width / 2 + boxWidth / 2 - 40 &&
-                    mouseY > y - 25 && mouseY < y + 25) {
+                let oy = boxY2 + 138 + i * 64;
+                let ox = boxX2 + 32;
+                let ow = boxWidth2 - 64;
+                if (mouseX > ox && mouseX < ox + ow && mouseY > oy && mouseY < oy + 46) {
                     this.currentQuestion++;
+                    this._optionFlash = 12;   // brief white flash
+                    this._shakeFrames = 6;
+                    this._shakeMag    = 3;
                     this.buttonSound.play();
                     break;
                 }
@@ -567,12 +706,19 @@ class Scene4 {
         }
 
         // Start transition timer after first cannon fire
+        // Screen shake on fire
+        this._shakeFrames = 12;
+        this._shakeMag    = 5;
+
         if (!this.hasFirstCannonFired) {
             this.hasFirstCannonFired = true;
+            // Fade music before screen fade
+            if (this.gameMusic) this.gameMusic.fade(0.5, 0, 1500);
+            // Screen fade starts 1.2s before transition
+            setTimeout(() => { this._fadeAlpha = 0; this._fading = true; }, 2800);
             this.sceneTransitionTimer = setTimeout(() => {
-                this.cleanup();
                 this.transitionToScene5();
-            }, 6000); // 6 seconds delay
+            }, 4000);
         }
     }
 
@@ -643,10 +789,8 @@ class Scene4 {
 
     transitionToScene5() {
         this.cleanup();
-        currentScene = new Scene4_5();  // Go to Scene4.5 first
-        if (currentScene.preload) {
-            currentScene.preload();
-        }
+        currentScene = new Scene4_5();
+        if (currentScene.preload) currentScene.preload();
     }
 
     // When transitioning to Scene4
@@ -655,9 +799,4 @@ class Scene4 {
         // ... other transition code
     }
 
-    // When leaving Scene4
-    cleanup() {
-        CustomCursor.show();  // Reset cursor state
-        // ... other cleanup code
-    }
 }

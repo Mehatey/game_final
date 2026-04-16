@@ -71,12 +71,16 @@ class Scene3 {
         this.displayText = "";
         this.textOpacity = 255;
         this.typewriterSpeed = 4;
-        this.displayDuration = 120;
+        this.displayDuration = 90;
         this.fadeSpeed = 3;
         this.timer = 0;
         this.state = 'typing';
         this.playerName = "Square";
         this.narrationMusic = null;
+        this._shakeFrames = 0;
+        this._shakeMag    = 0;
+        this._hitStopFrames = 0;
+        this._spawnWarnings = [];
         this.hopeEntered = false;
         this.waitingForHopeEntry = false;
         this.currentIntroDialogue = 0;
@@ -193,8 +197,8 @@ class Scene3 {
             volume: 0.3,
             loop: true,
             onload: () => {
-                console.log("Scary sound loaded");
-                this.scarySound.play();
+                if (currentScene !== this) return;
+                if (this.scarySound) this.scarySound.play();
                 this.assetsLoaded = true;
             },
             onloaderror: (id, err) => console.error("Error loading scary sound:", err)
@@ -220,17 +224,20 @@ class Scene3 {
     }
 
     draw() {
-        // Create dark gradient background first
-        let c1 = color(0, 0, 0);      // Pure black
-        let c2 = color(40, 40, 40);   // Dark gray
-
-        // Draw gradient
-        for (let y = 0; y < height; y++) {
-            let inter = map(y, 0, height, 0, 1);
-            let c = lerpColor(c1, c2, inter);
-            stroke(c);
-            line(0, y, width, y);
+        // Screen shake
+        if (this._shakeFrames > 0) {
+            translate(random(-this._shakeMag, this._shakeMag),
+                      random(-this._shakeMag, this._shakeMag));
+            this._shakeFrames--;
         }
+
+        // Draw gradient background using canvas API
+        let ctx = drawingContext;
+        let gradient = ctx.createLinearGradient(0, 0, 0, height);
+        gradient.addColorStop(0, 'rgb(0,0,0)');
+        gradient.addColorStop(1, 'rgb(40,40,40)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
 
         // Draw yellow background effect immediately after gradient
         if (this.hopeBackgroundEffect.active) {
@@ -259,13 +266,13 @@ class Scene3 {
         }
 
         if (!this.assetsLoaded) {
-            console.log("Waiting for assets to load...");
             return;
         }
 
         // Add custom cursor
         CustomCursor.draw();
 
+        CustomCursor.mode = this.dialogueState === 'playing' ? 'danger' : 'story';
         if (this.dialogueState === 'intro') {
             this.drawIntroDialogue();
         } else if (this.dialogueState === 'heroDialogue') {
@@ -297,6 +304,7 @@ class Scene3 {
                             this.hopeEntrySound.play();
                             // Start dissolve when music ends
                             this.hopeEntrySound.once('end', () => {
+                                if (currentScene !== this) return;
                                 this.hopeBackgroundEffect.dissolveStart = true;
                             });
                         }
@@ -331,23 +339,49 @@ class Scene3 {
                 }
             }
         } else if (this.dialogueState === 'playing') {
+            CustomCursor.mode = 'danger';
             // Check for game completion first
             if (this.gameTimer <= 0 && !this.showRetryPrompt) {
                 // Player won! Stop all gameplay and show victory screen
                 this.gameCompleted = true;
                 this.words = [];  // Clear all words
 
-                // Draw victory screen
+                // Cinematic victory screen
+                if (!this._victoryStart) this._victoryStart = millis();
+                let vt = min(1, (millis() - this._victoryStart) / 1200);
+
                 push();
-                fill(0, 0, 0, 200);
+                // Dark overlay fades in
+                fill(0, 0, 0, vt * 210);
                 rect(0, 0, width, height);
 
+                // Particle burst from centre
+                noStroke();
+                for (let i = 0; i < 40; i++) {
+                    let seed  = i * 23.1;
+                    let angle = (i / 40) * TWO_PI;
+                    let dist  = vt * (120 + noise(seed) * 180);
+                    let px    = width/2  + cos(angle) * dist;
+                    let py    = height/2 + sin(angle) * dist;
+                    let sz    = lerp(14, 4, vt) * noise(seed + 1);
+                    let g     = floor(lerp(200, 255, noise(seed + 2)));
+                    fill(100 + floor(noise(seed) * 155), g, 80, vt * 220 * (1 - vt * 0.6));
+                    ellipse(px, py, sz, sz);
+                }
+
+                // "YOU SURVIVED" — glowing
+                drawingContext.shadowBlur  = 30 * vt;
+                drawingContext.shadowColor = 'rgba(100,255,100,0.9)';
+                fill(120, 255, 120, vt * 255);
                 textAlign(CENTER, CENTER);
-                fill(255);
-                textSize(32);
-                text("You survived!", width / 2, height / 2 - 40);
-                textSize(24);
-                text("Click anywhere to continue...", width / 2, height / 2 + 40);
+                textSize(lerp(20, 52, vt));
+                text("YOU SURVIVED", width/2, height/2 - 30);
+
+                drawingContext.shadowBlur = 0;
+                let pulse = (sin(frameCount * 0.1) + 1) * 0.5;
+                fill(255, 255, 255, 140 + pulse * 100);
+                textSize(22);
+                text("Click anywhere to continue", width/2, height/2 + 42);
                 pop();
 
                 // Stop wordgame sound
@@ -365,32 +399,91 @@ class Scene3 {
 
             // Only continue with game logic if not completed
             if (!this.gameCompleted) {
+                // Hit-stop: skip update logic for a few frames after collision
+                if (this._hitStopFrames > 0) { this._hitStopFrames--; }
+                else {
                 this.hero.update();
+                } // always draw
                 this.hero.draw();
+
+                // Spawn warnings — draw before words so they're behind
+                for (let i = this._spawnWarnings.length - 1; i >= 0; i--) {
+                    let w = this._spawnWarnings[i];
+                    w.frames--;
+                    let pulse = (sin(frameCount * 0.5) + 1) * 0.5;
+                    push();
+                    noFill();
+                    stroke(255, 80, 0, 120 + pulse * 80);
+                    strokeWeight(2);
+                    let r = 28 + pulse * 8;
+                    ellipse(w.x, w.y, r * 2, r * 2);
+                    stroke(255, 80, 0, 60);
+                    strokeWeight(6);
+                    ellipse(w.x, w.y, r * 2.8, r * 2.8);
+                    pop();
+                    if (w.frames <= 0) {
+                        // Spawn the actual word
+                        let nw = new Word(w.word, w.x, w.y);
+                        let dx = width/2 - w.x, dy = height/2 - w.y;
+                        let d  = sqrt(dx*dx + dy*dy);
+                        nw.velocityX = (dx/d) * 1.5;
+                        nw.velocityY = (dy/d) * 1.5;
+                        // 30% of words home toward hero slightly
+                        nw._hunts = random() < 0.3;
+                        this.words.push(nw);
+                        this._spawnWarnings.splice(i, 1);
+                    }
+                }
 
                 // Update and check words
                 for (let i = this.words.length - 1; i >= 0; i--) {
                     let word = this.words[i];
-                    word.update();
+                    if (this._hitStopFrames <= 0) {
+                        // Slight hero-homing on 30% of words
+                        if (word._hunts) {
+                            let dx = this.hero.x - word.x;
+                            let dy = this.hero.y - word.y;
+                            let d  = sqrt(dx*dx + dy*dy);
+                            if (d < 280) {
+                                word.velocityX = lerp(word.velocityX, (dx/d) * 2, 0.04);
+                                word.velocityY = lerp(word.velocityY, (dy/d) * 2, 0.04);
+                            }
+                        }
+                        word.update();
+                    }
                     word.draw();
 
                     if (this.checkCollision(word)) {
                         if (this.hurtSound) this.hurtSound.play();
                         if (this.wordgameSound) this.wordgameSound.stop();
                         if (this.jokerSound) this.jokerSound.stop();
+                        this._shakeFrames  = 18;
+                        this._shakeMag     = 7;
+                        this._hitStopFrames = 5;
                         this.showRetryPrompt = true;
                         this.currentHopeQuote = random(this.hopeQuotes);
                         this.words = [];
+                        this._spawnWarnings = [];
                         break;
                     }
                 }
 
-                // Draw timer
+                // Draw timer — pill background + glow when low
                 push();
+                let timerVal = ceil(this.gameTimer);
+                let isLow    = timerVal <= 5;
+                let pulse    = isLow ? (sin(frameCount * 0.3) * 0.5 + 0.5) : 0;
+                drawingContext.shadowBlur  = isLow ? 20 + pulse * 20 : 10;
+                drawingContext.shadowColor = isLow ? 'rgba(255,80,80,0.9)' : 'rgba(255,255,255,0.4)';
+                noStroke();
+                fill(0, 0, 0, 160);
+                rectMode(CENTER);
+                rect(width / 2, 46, 80, 48, 14);
                 textAlign(CENTER, CENTER);
-                textSize(32);
-                fill(255);
-                text(ceil(this.gameTimer), width / 2, 50);
+                textSize(36);
+                fill(isLow ? color(255, 80 + pulse * 80, 80) : 255);
+                text(timerVal, width / 2, 48);
+                drawingContext.shadowBlur = 0;
                 pop();
 
                 // Update timer
@@ -398,46 +491,18 @@ class Scene3 {
                     this.gameTimer--;
                 }
 
-                // Only spawn new words if game is still active
-                if (this.words.length < 17 && this.gameTimer > 0) {
+                // Spawn words with a brief warning flash first
+                if (this.words.length + this._spawnWarnings.length < 17 && this.gameTimer > 0) {
                     if (random() < 0.8) {
                         let word = this.negativeWords[floor(random(this.negativeWords.length))];
-                        let spawnSide = floor(random(4));
-                        let x, y, angle;
-
-                        switch (spawnSide) {
-                            case 0: // top
-                                x = random(width);
-                                y = -50;
-                                angle = random(PI / 4, 3 * PI / 4);
-                                break;
-                            case 1: // right
-                                x = width + 50;
-                                y = random(height);
-                                angle = random(3 * PI / 4, 5 * PI / 4);
-                                break;
-                            case 2: // bottom
-                                x = random(width);
-                                y = height + 50;
-                                angle = random(5 * PI / 4, 7 * PI / 4);
-                                break;
-                            case 3: // left
-                                x = -50;
-                                y = random(height);
-                                angle = random(-PI / 4, PI / 4);
-                                break;
-                        }
-
-                        // Create word with direction toward center
-                        let newWord = new Word(word, x, y);
-                        let centerX = width / 2;
-                        let centerY = height / 2;
-                        let dx = centerX - x;
-                        let dy = centerY - y;
-                        let dist = Math.sqrt(dx * dx + dy * dy);
-                        newWord.velocityX = (dx / dist) * 1.5;
-                        newWord.velocityY = (dy / dist) * 1.5;
-                        this.words.push(newWord);
+                        let side = floor(random(4));
+                        let wx, wy;
+                        if      (side === 0) { wx = random(width);  wy = -50; }
+                        else if (side === 1) { wx = width + 50;     wy = random(height); }
+                        else if (side === 2) { wx = random(width);  wy = height + 50; }
+                        else                 { wx = -50;             wy = random(height); }
+                        // Queue a warning — word spawns after 18 frames
+                        this._spawnWarnings.push({ word, x: wx, y: wy, frames: 18 });
                     }
                 }
             }
@@ -563,7 +628,7 @@ class Scene3 {
             case 'typing':
                 if (frameCount % 2 === 0) {
                     if (this.currentChar < this.introDialogues[this.currentDialogue].length) {
-                        if (this.currentChar === 0) {
+                        if (this.currentChar === 0 && this.dialogueBox.typingSound) {
                             this.dialogueBox.typingSound.play();
                         }
                         this.displayText += this.introDialogues[this.currentDialogue][this.currentChar];
@@ -617,12 +682,16 @@ class Scene3 {
                     mouseY < buttonY + buttonHeight / 2) {
 
                     // Reset game state
-                    this.gameTimer = 15;  // Reset to original 15 seconds
-                    this.words = [];      // Clear existing words
-                    this.showRetryPrompt = false;  // Hide retry prompt
+                    this.gameTimer       = 15;
+                    this.words           = [];
+                    this.showRetryPrompt = false;
+                    this.gameCompleted   = false;
+                    this._shakeFrames    = 0;
+                    this._shakeMag       = 0;
+                    this._victoryStart   = null;
 
                     // Spawn initial set of words
-                    for (let i = 0; i < 14; i++) {  // Increased from 12 to 14 initial words
+                    for (let i = 0; i < 8; i++) {  // Reduced: start with 8 on retry, not 14
                         let word = this.negativeWords[floor(random(this.negativeWords.length))];
                         let spawnSide = floor(random(4));
                         let x, y, angle;
@@ -718,6 +787,11 @@ class Scene3 {
             this.scarySound.unload();
         }
 
+        if (this.hopeEntrySound) {
+            this.hopeEntrySound.stop();
+            this.hopeEntrySound.unload();
+        }
+
         // Add wordgame sound cleanup
         if (this.wordgameSound) {
             this.wordgameSound.stop();
@@ -768,27 +842,6 @@ class Scene3 {
         return false;
     }
 
-    updateDialogue() {
-        if (this.currentDialogue < this.heroDialogues.length) {
-            let dialogue = this.heroDialogues[this.currentDialogue];
-
-            // Speed up typing by reducing frame delay
-            if (frameCount % this.typingSpeed === 0) {  // Using typingSpeed from constructor
-                if (this.currentChar < dialogue.text.length) {
-                    this.displayText += dialogue.text.charAt(this.currentChar);
-                    this.currentChar++;
-                } else if (!this.waitingForNext) {
-                    this.waitingForNext = true;
-                    setTimeout(() => {
-                        this.currentDialogue++;
-                        this.currentChar = 0;
-                        this.displayText = "";
-                        this.waitingForNext = false;
-                    }, 1500);  // Reduced wait time between dialogues
-                }
-            }
-        }
-    }
 }
 
 // Update HopeParticle class for subtler particles

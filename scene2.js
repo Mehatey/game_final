@@ -19,7 +19,7 @@ class Scene2 {
         this.videos = [];
         this.currentVideo = null;
         this.videoIndex = 0;
-        this.totalVideos = 7;
+        this.totalVideos = 1;
         this.videoPlaying = false;
         this.lastSentenceTime = 0;
         this.waitingForNext = false;
@@ -45,13 +45,7 @@ class Scene2 {
 
         // Load videos
         const videoFiles = [
-            './assets/videos/intro/meh01.mp4',
-            './assets/videos/intro/meh02.mp4',
-            './assets/videos/intro/meh03.mp4',
-            './assets/videos/intro/meh04.mp4',
-            './assets/videos/intro/meh05.mp4',
-            './assets/videos/intro/meh06.mp4',
-            './assets/videos/intro/meh07.mp4'
+            './assets/videos/intro/cinematic_2dgame.mp4'
         ];
 
         videoFiles.forEach((path) => {
@@ -171,6 +165,7 @@ class Scene2 {
                 if (!this.waitingForNext) {
                     this.waitingForNext = true;
                     setTimeout(() => {
+                        if (currentScene !== this) return;
                         if (this.currentSentence < this.sentences.length - 1) {
                             this.currentSentence++;
                             this.charIndex = 0;
@@ -180,7 +175,7 @@ class Scene2 {
                             this.textComplete = true;
                             this.reversing = true;
                         }
-                    }, 2000);
+                    }, 1000);
                 }
             }
         }
@@ -263,6 +258,7 @@ class Scene2 {
             // Last video finished, clean up and switch to Scene3
             this.cleanup();
             currentScene = new Scene3();
+            if (currentScene.preload) currentScene.preload();
         }
     }
 

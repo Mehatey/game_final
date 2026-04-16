@@ -80,8 +80,9 @@ class Scene4_5 {
                 onload: () => console.log("Pokemon siren loaded"),
                 onplay: () => {
                     setTimeout(() => {
-                        this.pokemonSiren.fade(0.5, 0, 1000);
-                        this.scarySound.play();
+                        if (currentScene !== this) return;
+                        if (this.pokemonSiren) this.pokemonSiren.fade(0.5, 0, 1000);
+                        if (this.scarySound) this.scarySound.play();
                     }, 6000);
                 }
             });
@@ -170,48 +171,42 @@ class Scene4_5 {
                 active: false
             };
 
+            this._shakeFrames    = 0;
+            this._shakeMag       = 0;
+            this._hitFlash       = 0;
+            this._startGameCalled = false;
+            this._distractBursts = [];
+
             console.log('Scene4_5 constructor completed');
         } catch (error) {
             console.error('Error in Scene4_5 constructor:', error);
         }
     }
 
-    async preload() {
-        console.log('Scene4_5 preload started');
-        try {
-            // Load Hope first to debug the issue
-            console.log('Starting Hope preload...');
-            console.log('Hope initial state:', this.hope);
-            await this.hope.preload();
-            console.log('Hope after preload:', this.hope);
-            console.log('Hope sprite loaded:', !!this.hope.sprite);
+    preload() {
+        let loaded = 0;
+        const need = 5; // background + hero + hope + 3 distractions
+        const tryDone = () => { loaded++; if (loaded >= need) { this.assetsLoaded = true; this.doorStartTime = millis(); if (this.sounds.fire) this.sounds.fire.play(); } };
 
-            // Load other assets
-            this.background = await loadImage('assets/backgrounds/burning.gif');
-            await this.hero.preload();
+        // Background via p5
+        loadImage('assets/backgrounds/burning.gif', img => { this.background = img; tryDone(); });
 
-            // Load distraction gifs
-            this.distractionImages.burger = await loadImage('assets/distractions/burger.gif');
-            this.distractionImages.computer = await loadImage('assets/distractions/computer.gif');
-            this.distractionImages.fourLoko = await loadImage('assets/distractions/fourloko.gif');
+        // Characters
+        this.hero.preload(); tryDone();
+        this.hope.preload(); tryDone();
 
-            this.assetsLoaded = true;
-            this.doorStartTime = millis();
-
-            // Start playing fire sound after assets are loaded
-            if (this.sounds.fire) {
-                console.log('Starting fire sound');
-                this.sounds.fire.play();
-            }
-        } catch (error) {
-            console.error('Error loading Hope:', error);
-            this.assetsLoaded = false;
+        // Distraction GIFs as native HTML img elements (animated by browser natively)
+        const distrMap = { burger: 'burger.gif', computer: 'computer.gif', fourLoko: 'fourloko.gif' };
+        for (let [key, file] of Object.entries(distrMap)) {
+            const el = document.createElement('img');
+            el.src = `assets/distractions/${file}`;
+            el.onload  = () => { this.distractionImages[key] = el; this.distractionImages[key + '_native'] = true; tryDone(); };
+            el.onerror = () => tryDone();
         }
+
     }
 
     draw() {
-        console.log('Draw called, assets loaded:', this.assetsLoaded);
-
         if (!this.assetsLoaded) {
             // Draw loading screen
             background(0);
@@ -229,6 +224,13 @@ class Scene4_5 {
         if (!this.hope.sprite) {
             console.error('Hope sprite not loaded');
             return;
+        }
+
+        // Screen shake
+        if (this._shakeFrames > 0) {
+            translate(random(-this._shakeMag, this._shakeMag),
+                      random(-this._shakeMag, this._shakeMag));
+            this._shakeFrames--;
         }
 
         // Add black gradient overlay when game starts
@@ -304,6 +306,11 @@ class Scene4_5 {
                 this.transitionComplete = true;
                 this.hopeVisible = true;
                 this.hero.visible = true;
+                // Auto-start the game once the door finishes opening
+                if (!this.gameStarted && !this._startGameCalled) {
+                    this._startGameCalled = true;
+                    this.startGame();
+                }
             }
         } else if (this.transitionComplete) {
             // Draw full background
@@ -330,13 +337,23 @@ class Scene4_5 {
 
         // Game Logic
         if (this.gameStarted) {
-            // Draw Timer
+            // Draw Timer — pill with glow when low
             push();
+            let tv   = ceil(this.gameTimer);
+            let tLow = tv <= 10;
+            let tp   = tLow ? (sin(frameCount * 0.3) * 0.5 + 0.5) : 0;
+            drawingContext.shadowBlur  = tLow ? 16 + tp * 16 : 8;
+            drawingContext.shadowColor = tLow ? 'rgba(255,80,80,0.9)' : 'rgba(255,255,255,0.3)';
+            noStroke();
+            fill(0, 0, 0, 160);
+            rectMode(CENTER);
+            rect(width / 2, 40, 90, 48, 12);
             textFont('ARCADE');
-            textSize(32);
-            textAlign(CENTER, TOP);
-            fill(255);
-            text(ceil(this.gameTimer), width / 2, 20);
+            textSize(34);
+            textAlign(CENTER, CENTER);
+            fill(tLow ? color(255, 80 + tp * 80, 80) : 255);
+            text(tv, width / 2, 40);
+            drawingContext.shadowBlur = 0;
             pop();
 
             // Update timer
@@ -351,9 +368,9 @@ class Scene4_5 {
                     this.lastSoundTime = millis();
                 }
 
-                // Much less frequent spawning - every 4 seconds
-                if (frameCount % 240 === 0) {  // Changed from 150 to 240
-                    if (this.distractions.length < 3) {  // Reduced max from 5 to 3
+                // Spawn every 3 seconds, max 5 distractions
+                if (frameCount % 180 === 0) {
+                    if (this.distractions.length < 5) {
                         this.addNewDistraction();
                     }
                 }
@@ -376,14 +393,34 @@ class Scene4_5 {
                 push();
                 translate(d.x, d.y);
                 rotate(d.rotation);
-                imageMode(CENTER);
-                image(this.distractionImages[d.type], 0, 0, d.size, d.size);
+                let dImg = this.distractionImages[d.type];
+                if (dImg) {
+                    if (this.distractionImages[d.type + '_native']) {
+                        // Native HTML img — animated GIF drawn via canvas API
+                        drawingContext.drawImage(dImg, -d.size/2, -d.size/2, d.size, d.size);
+                    } else {
+                        imageMode(CENTER);
+                        image(dImg, 0, 0, d.size, d.size);
+                    }
+                }
                 pop();
 
                 // Check collision with hero
                 if (dist(d.x, d.y, this.hero.x, this.hero.y) < (d.size + 30) / 2) {
-                    // Handle collision (maybe reduce time or health)
-                    this.gameTimer -= 5; // Penalty for getting hit
+                    this.gameTimer -= 5;
+                    this._shakeFrames = 16; this._shakeMag = 8;
+                    this._hitFlash = 160;
+                    // Burst particles at collision point
+                    for (let p = 0; p < 10; p++) {
+                        let ang = (p / 10) * TWO_PI;
+                        this._distractBursts.push({
+                            x: d.x, y: d.y,
+                            vx: cos(ang) * random(2, 5),
+                            vy: sin(ang) * random(2, 5),
+                            life: 25, sz: random(6, 14),
+                            r: 255, g: floor(random(80, 160)), b: 0
+                        });
+                    }
                     this.distractions.splice(i, 1);
                     continue;
                 }
@@ -397,6 +434,28 @@ class Scene4_5 {
 
             // Update special power
             this.updateSpecialPowerBar();
+
+            // Distraction burst particles
+            push(); noStroke();
+            for (let i = this._distractBursts.length - 1; i >= 0; i--) {
+                let b = this._distractBursts[i];
+                b.x += b.vx; b.y += b.vy; b.vy += 0.2;
+                b.life--;
+                if (b.life <= 0) { this._distractBursts.splice(i, 1); continue; }
+                fill(b.r, b.g, b.b, map(b.life, 25, 0, 220, 0));
+                ellipse(b.x, b.y, b.sz * (b.life/25), b.sz * (b.life/25));
+            }
+            pop();
+
+            // Hit flash
+            if (this._hitFlash > 0) {
+                push();
+                noStroke();
+                fill(255, 60, 60, this._hitFlash);
+                rect(0, 0, width, height);
+                this._hitFlash = max(0, this._hitFlash - 14);
+                pop();
+            }
 
             // Draw bars
             this.drawMotivationBar();
@@ -594,21 +653,20 @@ class Scene4_5 {
         // Play pokemon siren immediately
         this.pokemonSiren.play();
 
-        // Delay the actual game start
+        // Delay game start — 1.5s instead of 3s (felt sluggish)
         setTimeout(() => {
+            if (currentScene !== this) return;
             this.gameStarted = true;
             this.gameTimer = 45;
             this.lastSoundTime = 0;
             this.distractions = [];
 
-            // Start with fewer distractions
             this.addNewDistraction();
-            this.addNewDistraction();  // Reduced from 3 to 2 initial distractions
+            this.addNewDistraction();
 
-            // Start other game sounds after flash
-            this.heartbeatSound.play();
-            this.wordgameSound.play();
-        }, 3000);
+            if (this.heartbeatSound) this.heartbeatSound.play();
+            if (this.wordgameSound) this.wordgameSound.play();
+        }, 1500);
     }
 
     createExplosion(x, y) {
@@ -630,6 +688,7 @@ class Scene4_5 {
 
     drawMotivationBar() {
         push();
+        rectMode(CORNER);
         fill(0, 150);
         rect(20, 20, 200, 20);
         fill(0, 255, 0);
@@ -643,6 +702,7 @@ class Scene4_5 {
 
     drawSpecialPowerBar() {
         push();
+        rectMode(CORNER);
         fill(0, 0, 0, 150);
         rect(20, 50, 200, 20);
         fill(255, 255, 0);

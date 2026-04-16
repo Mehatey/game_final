@@ -54,7 +54,6 @@ class Scene7 {
     }
 
     draw() {
-        console.log("Scene7 draw called, assetsLoaded:", this.assetsLoaded);  // Debug log
         if (!this.assetsLoaded || this.images.length === 0) {
             background(0);
             fill(255);
@@ -65,44 +64,43 @@ class Scene7 {
 
         background(0);
 
-        // Draw current image with fade
+        // Draw current image preserving aspect ratio
         if (this.images[this.currentImage]) {
+            let img = this.images[this.currentImage];
+            let sc  = max(windowWidth / img.width, windowHeight / img.height);
+            let dw  = img.width * sc, dh = img.height * sc;
+
             push();
-            imageMode(CORNER);
+            imageMode(CENTER);
             tint(255, this.fadeAlpha);
-            image(this.images[this.currentImage], 0, 0, windowWidth, windowHeight);
+            image(img, width / 2, height / 2, dw, dh);
             pop();
 
-            // Fade in current image
-            if (this.fadeAlpha < 255) {
-                this.fadeAlpha += 5;
-            }
+            // Cinematic slow fade — was 5, now 2
+            if (this.fadeAlpha < 255) this.fadeAlpha += 2;
 
-            // Check for next image
             if (millis() - this.lastImageChange >= this.imageInterval && this.fadeAlpha >= 255) {
                 this.currentImage++;
                 this.fadeAlpha = 0;
                 this.lastImageChange = millis();
 
-                // Start video after last image
                 if (this.currentImage >= this.images.length) {
                     this.showingVideo = true;
                     if (this.video) {
                         this.video.play();
-                        this.video.onended(() => {
-                            switchScene(new Scene8());
-                        });
+                        this.video.onended(() => { switchScene(new Scene1()); });
                     }
                 }
             }
         }
 
-        // Draw video if showing
+        // Draw video
         if (this.showingVideo && this.video) {
             push();
+            imageMode(CENTER);
             tint(255, this.videoFadeAlpha);
-            image(this.video, 0, 0, width, height);
-            this.videoFadeAlpha = min(255, this.videoFadeAlpha + 5);
+            image(this.video, width / 2, height / 2, width, height);
+            this.videoFadeAlpha = min(255, this.videoFadeAlpha + 3);
             pop();
         }
 

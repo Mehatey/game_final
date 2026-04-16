@@ -1,4 +1,4 @@
-class Scene4_5 {
+class Scene4_5_Legacy {
     constructor() {
         console.log('Scene4_5 constructor started');
         try {
@@ -91,6 +91,7 @@ class Scene4_5 {
                 onload: () => console.log("Pokemon siren loaded"),
                 onplay: () => {
                     setTimeout(() => {
+                        if (currentScene !== this) return;
                         this.pokemonSiren.fade(0.5, 0, 1000);
                         this.scarySound.play();
                     }, 6000);
@@ -386,13 +387,6 @@ class Scene4_5 {
             } else if (this.transitionComplete && !this.dialogueComplete) {
                 // This is our working dialogue and Hope movement code
                 if (this.hopeVisible && !this.dialogueComplete) {
-                    console.log('Drawing Hope:', {
-                        x: this.hope.x,
-                        y: this.hope.y,
-                        sprite: !!this.hope.sprite,
-                        visible: this.hopeVisible
-                    });
-
                     // Draw Hope with floating movement
                     this.hopeMovement.angle += 0.02;
                     let floatX = 80 + cos(this.hopeMovement.angle) * this.hopeMovement.radius;
