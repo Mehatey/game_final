@@ -42,4 +42,12 @@ class SoundManager {
             }
         });
     }
+
+    stopAll() {
+        this.sounds.forEach(sound => {
+            if (sound.isPlaying()) {
+                sound.stop();
+            }
+        });
+    }
 }
