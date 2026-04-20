@@ -91,8 +91,6 @@ class Scene1 {
         this.showButtons = false;
 
         this.playButtonClicked = false;
-        this.debugVisible = true;
-        this._createDebugOverlay();
 
         // Initialize sound system
         this.soundEffects = {

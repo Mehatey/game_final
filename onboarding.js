@@ -1,19 +1,19 @@
 class Onboarding {
     constructor() {
         this.slide = 0;
-        this.totalSlides = 4;
+        this.totalSlides = 3;
         this.fadeAlpha = 0;
         this.fadingIn = true;
         this.fadingOut = false;
         this.particles = [];
 
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 40; i++) {
             this.particles.push({
                 x: random(width),
                 y: random(height),
-                size: random(2, 5),
-                speed: random(0.2, 0.7),
-                alpha: random(20, 70)
+                size: random(2, 4),
+                speed: random(0.2, 0.6),
+                alpha: random(15, 50)
             });
         }
     }
@@ -25,29 +25,28 @@ class Onboarding {
         switch (this.slide) {
             case 0: this._drawLogo(); break;
             case 1: this._drawStory(); break;
-            case 2: this._drawCharacters(); break;
-            case 3: this._drawControls(); break;
+            case 2: this._drawControls(); break;
         }
 
         if (!this.fadingIn && !this.fadingOut) {
-            this._drawContinueHint();
+            this._drawHint();
         }
 
         // Fade overlay
         push();
         noStroke();
         if (this.fadingIn) {
-            this.fadeAlpha = min(255, this.fadeAlpha + 8);
+            this.fadeAlpha = min(255, this.fadeAlpha + 10);
             fill(0, 255 - this.fadeAlpha);
             rect(0, 0, width, height);
             if (this.fadeAlpha >= 255) this.fadingIn = false;
         } else if (this.fadingOut) {
-            this.fadeAlpha = max(0, this.fadeAlpha - 8);
+            this.fadeAlpha = max(0, this.fadeAlpha - 10);
             fill(0, 255 - this.fadeAlpha);
             rect(0, 0, width, height);
             if (this.fadeAlpha <= 0) {
                 this.fadingOut = false;
-                this._advanceSlide();
+                this._advance();
             }
         }
         pop();
@@ -67,22 +66,27 @@ class Onboarding {
         textAlign(CENTER, CENTER);
         noStroke();
 
-        drawingContext.shadowBlur = 35;
-        drawingContext.shadowColor = 'rgba(255,255,255,0.7)';
-        textSize(min(width * 0.09, 80));
+        // Big title
+        drawingContext.shadowBlur = 40;
+        drawingContext.shadowColor = 'rgba(255,255,255,0.8)';
+        textSize(min(width * 0.1, 96));
         fill(255);
-        text('SQUARUBE', width / 2, height / 2 - 50);
+        text('SQUARUBE', width / 2, height / 2 - 30);
         drawingContext.shadowBlur = 0;
 
-        textSize(min(width * 0.02, 17));
+        // Tagline
+        textSize(min(width * 0.024, 22));
         fill(160);
-        text('A STORY OF EVOLUTION', width / 2, height / 2 + 20);
+        text('A STORY OF EVOLUTION', width / 2, height / 2 + 55);
 
-        stroke(255, 100);
+        // Square icon
+        stroke(255, 80);
         strokeWeight(2);
         noFill();
-        let s = 32;
-        rect(width / 2 - s / 2, height / 2 + 65, s, s);
+        let s = 28;
+        rectMode(CENTER);
+        rect(width / 2, height / 2 + 105, s, s);
+        rectMode(CORNER);
         noStroke();
     }
 
@@ -90,165 +94,83 @@ class Onboarding {
         textAlign(CENTER, CENTER);
         noStroke();
 
-        textSize(min(width * 0.022, 18));
-        fill(120);
-        text('THE STORY', width / 2, height * 0.18);
-
-        stroke(255, 40);
-        strokeWeight(1);
-        line(width / 2 - 80, height * 0.18 + 18, width / 2 + 80, height * 0.18 + 18);
-        noStroke();
-
         let lines = [
-            'A lone square lands on an unfamiliar world.',
-            '',
-            'Guided by Hope, you must face the inner demons',
-            'standing between you and who you could become —',
-            '',
-            'Fear.  Doubt.  Regret.  Anger.',
-            'Insecurity.  Procrastination.',
-            '',
-            'This is your story of evolution.'
+            'You are a square.',
+            'Hope is your only guide.',
+            'Your inner demons are waiting.'
         ];
 
-        let lineH = height * 0.065;
-        let startY = height * 0.35;
-        textSize(min(width * 0.02, 17));
+        let lineH = min(height * 0.12, 80);
+        let startY = height / 2 - lineH;
 
         for (let i = 0; i < lines.length; i++) {
-            if (lines[i] === '') continue;
-            let alpha = (i === lines.length - 1) ? 255 : 200;
-            fill(255, alpha);
+            textSize(min(width * 0.033, 30));
+            fill(i === lines.length - 1 ? 255 : 200);
             text(lines[i], width / 2, startY + i * lineH);
         }
-    }
-
-    _drawCharacters() {
-        textAlign(CENTER, CENTER);
-        noStroke();
-
-        textSize(min(width * 0.022, 18));
-        fill(120);
-        text('WHO YOU ARE', width / 2, height * 0.18);
-
-        stroke(255, 40);
-        strokeWeight(1);
-        line(width / 2 - 80, height * 0.18 + 18, width / 2 + 80, height * 0.18 + 18);
-
-        // Divider
-        stroke(255, 25);
-        line(width / 2, height * 0.3, width / 2, height * 0.78);
-        noStroke();
-
-        let col1 = width * 0.28;
-        let col2 = width * 0.72;
-        let iconY = height * 0.42;
-
-        // YOU — square
-        stroke(255);
-        strokeWeight(2);
-        noFill();
-        let sq = 38;
-        rectMode(CENTER);
-        rect(col1, iconY, sq, sq);
-        rectMode(CORNER);
-        noStroke();
-
-        textSize(min(width * 0.02, 18));
-        fill(255);
-        text('YOU', col1, iconY + 38);
-        textSize(min(width * 0.015, 13));
-        fill(140);
-        text('The Square', col1, iconY + 60);
-        text('Land on a new world.', col1, height * 0.65);
-        text('Survive. Fight. Evolve.', col1, height * 0.68 + 16);
-
-        // HOPE — circle
-        stroke(100, 160, 255);
-        strokeWeight(2);
-        noFill();
-        ellipse(col2, iconY, 42, 42);
-        noStroke();
-
-        textSize(min(width * 0.02, 18));
-        fill(100, 160, 255);
-        text('HOPE', col2, iconY + 38);
-        textSize(min(width * 0.015, 13));
-        fill(140);
-        text('Your guide', col2, iconY + 60);
-        text('She believes in you', col2, height * 0.65);
-        text('even when you don\'t.', col2, height * 0.68 + 16);
     }
 
     _drawControls() {
         textAlign(CENTER, CENTER);
         noStroke();
 
-        textSize(min(width * 0.022, 18));
-        fill(120);
-        text('CONTROLS', width / 2, height * 0.18);
-
-        stroke(255, 40);
-        strokeWeight(1);
-        line(width / 2 - 80, height * 0.18 + 18, width / 2 + 80, height * 0.18 + 18);
-        noStroke();
-
         let rows = [
-            ['ARROW KEYS / WASD', 'Move your character'],
-            ['SPACE', 'Fire / activate cannon'],
-            ['CLICK', 'Confirm choices & dialogue'],
-            ['ESC', 'Pause the game'],
+            ['WASD  /  ARROWS', 'Move'],
+            ['SPACE', 'Fire'],
+            ['CLICK', 'Choose'],
+            ['ESC', 'Pause'],
         ];
 
-        let startY = height * 0.35;
-        let rowH = height * 0.1;
-        let kCol = width * 0.35;
-        let dCol = width * 0.65;
-        let kw = min(width * 0.22, 200);
-        let kh = 36;
+        let rowH = min(height * 0.1, 70);
+        let startY = height / 2 - rowH * 1.5;
+        let kCol = width * 0.38;
+        let vCol = width * 0.62;
+        let kw = min(width * 0.28, 240);
+        let kh = 44;
 
         for (let i = 0; i < rows.length; i++) {
             let y = startY + i * rowH;
 
-            // key pill
-            fill(255, 18);
-            stroke(255, 55);
+            // Key pill
+            fill(255, 15);
+            stroke(255, 50);
             strokeWeight(1);
             rectMode(CENTER);
             rect(kCol, y, kw, kh, 5);
             rectMode(CORNER);
             noStroke();
 
-            textSize(min(width * 0.015, 13));
+            textSize(min(width * 0.022, 20));
             fill(220);
             text(rows[i][0], kCol, y);
 
             textAlign(LEFT, CENTER);
-            fill(140);
-            text(rows[i][1], dCol - 10, y);
+            textSize(min(width * 0.022, 20));
+            fill(130);
+            text(rows[i][1], vCol, y);
             textAlign(CENTER, CENTER);
         }
     }
 
-    _drawContinueHint() {
+    _drawHint() {
         textAlign(CENTER, CENTER);
         noStroke();
-        let pulse = map(sin(frameCount * 0.04), -1, 1, 80, 180);
+        let pulse = map(sin(frameCount * 0.04), -1, 1, 70, 160);
         fill(255, pulse);
         textSize(min(width * 0.013, 12));
-        text('CLICK OR PRESS SPACE TO CONTINUE', width / 2, height * 0.88);
+        text('CLICK OR PRESS SPACE TO CONTINUE', width / 2, height * 0.9);
 
-        // Slide dots
+        // Dots
         let spacing = 14;
         let startX = width / 2 - ((this.totalSlides - 1) * spacing) / 2;
         for (let i = 0; i < this.totalSlides; i++) {
             fill(i === this.slide ? 255 : color(255, 50));
             noStroke();
-            ellipse(startX + i * spacing, height * 0.93, 6, 6);
+            ellipse(startX + i * spacing, height * 0.95, 6, 6);
         }
     }
 
-    _advanceSlide() {
+    _advance() {
         this.slide++;
         if (this.slide >= this.totalSlides) {
             currentScene = new Scene1();
@@ -265,10 +187,8 @@ class Onboarding {
     }
 
     mousePressed() { this._next(); }
-
     keyPressed() {
         if (key === ' ' || keyCode === ENTER) this._next();
     }
-
     cleanup() {}
 }
