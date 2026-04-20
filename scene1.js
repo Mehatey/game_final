@@ -26,22 +26,15 @@ class Scene1 {
         let buttonSpacing = 50;
 
         this.buttons = {
-            straightToMainBattle: {
-                x: windowWidth / 2 + (commonWidth / 3) + (buttonSpacing * 1.5),
-                y: windowHeight - 80,
-                width: commonWidth / 3,
-                height: 80,
-                text: "MAIN BATTLE"
-            },
             skipCinematic: {
-                x: windowWidth / 2 - (commonWidth / 3) - (buttonSpacing * 1.5),
+                x: windowWidth / 2 - (commonWidth / 3) / 2 - buttonSpacing,
                 y: windowHeight - 80,
                 width: commonWidth / 3,
                 height: 80,
                 text: "SKIP CINEMATIC"
             },
             beginJourney: {
-                x: windowWidth / 2,
+                x: windowWidth / 2 + (commonWidth / 3) / 2 + buttonSpacing,
                 y: windowHeight - 80,
                 width: (commonWidth / 3) * 1.2 + 30,
                 height: 80,
@@ -703,7 +696,6 @@ class Scene1 {
             this.drawHeroSprite();
             this.drawPixelButton(this.buttons.skipCinematic);
             this.drawPixelButton(this.buttons.beginJourney);
-            this.drawPixelButton(this.buttons.straightToMainBattle);
             pop();
 
             // Update movements and collisions
@@ -724,8 +716,7 @@ class Scene1 {
             if (this.playButtonClicked) {
                 this.drawPixelButton(this.buttons.skipCinematic);
                 this.drawPixelButton(this.buttons.beginJourney);
-                this.drawPixelButton(this.buttons.straightToMainBattle);
-            }
+                }
 
             // Draw sound play button
             push();
@@ -1183,17 +1174,7 @@ class Scene1 {
                     return;
                 }
 
-                // Main Battle -> Scene6
-                if (this.isMouseOver(this.buttons.straightToMainBattle)) {
-                    console.log("Main Battle clicked");
-                    if (this.buttonSound) this.buttonSound.play();
-                    this.cleanup();
-                    currentScene = new Scene6();
-                    if (currentScene.preload) currentScene.preload();
-                    return;
-                }
-
-            } catch (e) {
+} catch (e) {
                 console.error('Error in state 4 button handler:', e);
             }
         }
