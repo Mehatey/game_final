@@ -273,8 +273,10 @@ class Scene6 {
                 this.sounds.hurt = loadSound('./assets/sounds/hurt.mp3', () => {
                     this.sounds.firing = loadSound('./assets/sounds/firing.mp3', () => {
                         this.sounds.button = loadSound('./assets/sounds/button.mp3', () => {
-                            this.soundsLoaded = true;
-                            console.log('All sounds loaded');
+                            this.scarySound = loadSound('./assets/sounds/scary.mp3', () => {
+                                this.soundsLoaded = true;
+                                console.log('All sounds loaded');
+                            });
                         });
                     });
                 });
@@ -1974,6 +1976,9 @@ class Scene6 {
             Object.values(this.sounds).forEach(s => {
                 if (s && typeof s.stop === 'function') s.stop();
             });
+        }
+        if (this.scarySound && typeof this.scarySound.stop === 'function') {
+            this.scarySound.stop();
         }
     }
 }
