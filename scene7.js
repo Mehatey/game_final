@@ -88,7 +88,7 @@ class Scene7 {
                     this.showingVideo = true;
                     if (this.video) {
                         this.video.play();
-                        this.video.onended(() => { switchScene(new Scene1()); });
+                        this.video.onended(() => { switchScene(new FinishScreen()); });
                     }
                 }
             }
