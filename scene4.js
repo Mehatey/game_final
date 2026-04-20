@@ -444,6 +444,10 @@ class Scene4 {
             clearTimeout(this.sceneTransitionTimer);
             this.sceneTransitionTimer = null;
         }
+        if (this._fadingTimer) {
+            clearTimeout(this._fadingTimer);
+            this._fadingTimer = null;
+        }
         // Stop all sounds
         if (this.gameMusic) {
             this.gameMusic.stop();
@@ -715,7 +719,7 @@ class Scene4 {
             // Fade music before screen fade
             if (this.gameMusic) this.gameMusic.fade(0.5, 0, 1500);
             // Screen fade starts 1.2s before transition
-            setTimeout(() => { this._fadeAlpha = 0; this._fading = true; }, 2800);
+            this._fadingTimer = setTimeout(() => { this._fadeAlpha = 0; this._fading = true; }, 2800);
             this.sceneTransitionTimer = setTimeout(() => {
                 this.transitionToScene5();
             }, 4000);
