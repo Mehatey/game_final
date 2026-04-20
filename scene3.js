@@ -269,9 +269,6 @@ class Scene3 {
             return;
         }
 
-        // Add custom cursor
-        CustomCursor.draw();
-
         CustomCursor.mode = this.dialogueState === 'playing' ? 'danger' : 'story';
         if (this.dialogueState === 'intro') {
             this.drawIntroDialogue();

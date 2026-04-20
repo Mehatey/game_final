@@ -352,7 +352,6 @@ class Scene6 {
 
         // Mode: danger during battle
         CustomCursor.mode = 'danger';
-        CustomCursor.draw();
 
         // Unified top HUD bar
         this.drawHUD();

@@ -350,9 +350,6 @@ class Scene4 {
                 pop();
             }
 
-            // Add custom cursor
-            CustomCursor.draw();
-
             // Draw characters
             this.hero.update();
             this.hero.draw();
@@ -429,8 +426,6 @@ class Scene4 {
             pop();
         }
 
-        // Draw cursor in all states
-        CustomCursor.draw();
     }
 
     keyPressed() {

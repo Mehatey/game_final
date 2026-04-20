@@ -41,6 +41,7 @@ class Scene7 {
             // Load ambient sound
             this.ambientSound = loadSound('./assets/sounds/ambient.mp3', () => {
                 console.log('Ambient sound loaded');
+                if (!muted) this.ambientSound.loop();
             });
 
             this.assetsLoaded = true;
@@ -104,8 +105,6 @@ class Scene7 {
             pop();
         }
 
-        // Draw custom cursor
-        CustomCursor.draw();
     }
 
     windowResized() {
