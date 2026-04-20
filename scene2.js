@@ -203,6 +203,13 @@ class Scene2 {
 
     mousePressed() {
         console.log("Mouse pressed in Scene2");
+        if (this.videoPlaying) {
+            // Allow click-to-skip if video is stuck or user wants to skip
+            this.cleanup();
+            currentScene = new Scene3();
+            if (currentScene.preload) currentScene.preload();
+            return;
+        }
         if (this.textComplete && this.squares.length === 0) {
             if (this.isMouseOverButton(width / 2, height / 2, this.buttonWidth, this.buttonHeight)) {
                 console.log("Starting video sequence");
