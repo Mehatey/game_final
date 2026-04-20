@@ -36,9 +36,9 @@ function setup() {
 function draw() {
     if (currentScene) {
         currentScene.draw();
-        CustomCursor.draw();
         if (paused) _drawPauseMenu();
         _drawMuteButton();
+        CustomCursor.draw();
     }
 }
 
